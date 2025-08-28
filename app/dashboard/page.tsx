@@ -3,11 +3,18 @@
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { supabase } from '@lib/supabase'
+import IconSelectorModal from '@/app/components/IconSelectorModal'
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [isFolder, setIsFolder] = useState(false);
+  const [isCategory, setIsCategory] = useState(false);
+  const [selectedIcon, setSelectedIcon] = useState('');
+  const [isIconModalOpen, setIsIconModalOpen] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -27,6 +34,41 @@ export default function DashboardPage() {
   if (!session) {
     return null; // Don't render anything if not authenticated yet
   }
+
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    try {
+      // Add a new document to the 'items' table
+      const { data, error } = await supabase
+        .from('items')
+        .insert([{
+          name,
+          is_folder: isFolder,
+          is_category: isCategory,
+          icon: selectedIcon, // Using selectedIcon
+          user_id: session.user?.email, // Using email as a unique user identifier
+        }])
+        .select();
+
+      if (error) {
+        throw error;
+      }
+      
+      console.log("Document saved:", data);
+      
+      // Reset form and close modal
+      setName('');
+      setIsFolder(false);
+      setIsCategory(false);
+      setSelectedIcon('');
+      setIsModalOpen(false);
+
+    } catch (error) {
+      console.error("Error saving document:", error);
+      alert('Failed to save data. Please check the console for details.');
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen" style={{ backgroundColor: '#36453F' }}>
@@ -78,12 +120,14 @@ export default function DashboardPage() {
         <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
           <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
             <h2 className="text-xl font-bold mb-4 text-white">Create New</h2>
-            <form onSubmit={(e) => { e.preventDefault(); console.log('Form submitted!'); setIsModalOpen(false); }}>
+            <form onSubmit={handleFormSubmit}>
               <div className="mb-4">
                 <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">Name</label>
                 <input
                   type="text"
                   id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   required
                   className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
                   style={{ backgroundColor: '#36453F' }}
@@ -91,20 +135,32 @@ export default function DashboardPage() {
               </div>
               <div className="mb-4">
                 <label htmlFor="icon" className="block text-sm font-medium text-gray-300 mb-1">Icon</label>
-                <input
-                  type="file"
-                  id="icon"
-                  accept="image/*"
-                  className="w-full text-white"
-                />
+                <button
+                  type="button"
+                  onClick={() => setIsIconModalOpen(true)}
+                  className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
+                  style={{ backgroundColor: '#36453F' }}
+                >
+                  {selectedIcon ? selectedIcon : 'Select Icon'}
+                </button>
               </div>
               <div className="flex justify-between items-center mb-6 text-sm text-gray-300">
                 <label className="flex items-center space-x-2">
-                  <input type="checkbox" className="form-checkbox text-[#E8000A] rounded" />
+                  <input
+                    type="checkbox"
+                    checked={isFolder}
+                    onChange={(e) => setIsFolder(e.target.checked)}
+                    className="form-checkbox text-[#E8000A] rounded"
+                  />
                   <span>Is a Folder</span>
                 </label>
                 <label className="flex items-center space-x-2">
-                  <input type="checkbox" className="form-checkbox text-[#E8000A] rounded" />
+                  <input
+                    type="checkbox"
+                    checked={isCategory}
+                    onChange={(e) => setIsCategory(e.target.checked)}
+                    className="form-checkbox text-[#E8000A] rounded"
+                  />
                   <span>Is a Category</span>
                 </label>
               </div>
@@ -129,6 +185,15 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      <IconSelectorModal
+        isOpen={isIconModalOpen}
+        onClose={() => setIsIconModalOpen(false)}
+        onSelectIcon={(icon) => {
+          setSelectedIcon(icon);
+          setIsIconModalOpen(false);
+        }}
+      />
     </div>
   )
 }
