@@ -1073,6 +1073,21 @@ export default function DashboardPage() {
                       </div>
                     </SortableContext>
                   </DndContext>
+                  {!reorderBookmarksMode && (
+                    <button 
+                      onClick={() => {
+                        setItemType('bookmark');
+                        setParentId(selectedCategory);
+                        setIsModalOpen(true);
+                      }}
+                      className="w-full mt-4 px-4 py-2 text-white rounded-lg transition-colors hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" 
+                      style={{ 
+                        backgroundColor: '#E8000A',
+                        textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
+                      }}>
+                      + Add Bookmark to Category
+                    </button>
+                  )}
                   {reorderBookmarksMode && (
                     <button 
                       onClick={handleSaveBookmarkReorder}
@@ -1299,7 +1314,7 @@ export default function DashboardPage() {
         )}
 
         {isFolderModalOpen && selectedFolder && (
-          <div className="fixed inset-0 bg-gray-900 bg-opacity-5 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-50">
             <div className="rounded-lg shadow-2xl w-11/12 max-w-[800px] max-h-[80vh] overflow-hidden" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
               <div 
                 className="p-4 text-white font-bold text-xl"
