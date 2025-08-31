@@ -10,6 +10,18 @@ import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+'use client'
+
+import Image from 'next/image'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState, useRef, useCallback } from 'react'
+import IconSelectorModal from '@/app/components/IconSelectorModal'
+import { Item } from '@/lib/definitions';
+import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
 function SortableBookmarkItem(props: { 
   item: Item, 
   onEdit: (item: Item) => void,
@@ -25,6 +37,7 @@ function SortableBookmarkItem(props: {
   const { item, onEdit, onDelete, onReorder, isEditing, editedName, onNameChange, onNameBlur, onNameKeyDown, reorderMode } = props;
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{ top: number, left: number } | null>(null);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -39,6 +52,7 @@ function SortableBookmarkItem(props: {
         onContextMenu={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          setMenuPosition({ top: e.clientY, left: e.clientX });
           setIsMenuOpen(true);
         }}>
       {isEditing ? (
@@ -55,7 +69,7 @@ function SortableBookmarkItem(props: {
         <a href={item.url} target="_blank" rel="noopener noreferrer">{item.name}</a>
       )}
       <div className="relative">
-        <button onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen); }} className="text-white">
+        <button onClick={(e) => { e.stopPropagation(); setMenuPosition(null); setIsMenuOpen(!isMenuOpen); }} className="text-white">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
           </svg>
@@ -66,7 +80,11 @@ function SortableBookmarkItem(props: {
             onEdit={onEdit} 
             onDelete={onDelete} 
             onReorder={onReorder}
-            onClose={() => setIsMenuOpen(false)}
+            onClose={() => {
+              setIsMenuOpen(false);
+              setMenuPosition(null);
+            }}
+            position={menuPosition}
           />
         )}
       </div>
@@ -80,8 +98,9 @@ function BookmarkMenu(props: {
   onDelete: (item: Item) => void,
   onReorder: () => void,
   onClose: () => void,
+  position: { top: number, left: number } | null,
 }) {
-  const { bookmark, onEdit, onDelete, onReorder, onClose } = props;
+  const { bookmark, onEdit, onDelete, onReorder, onClose, position } = props;
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -96,14 +115,19 @@ function BookmarkMenu(props: {
     };
   }, [onClose]);
 
+  const style = position
+    ? { top: position.top, left: position.left, position: 'fixed' as const }
+    : { right: 0, marginTop: '0.5rem', position: 'absolute' as const };
+
   return (
-    <div ref={menuRef} className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg z-20">
+    <div ref={menuRef} style={style} className={`w-48 bg-gray-800 rounded-md shadow-lg z-20`}>
       <a href="#" onClick={(e) => { e.preventDefault(); onEdit(bookmark); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Edit</a>
       <a href="#" onClick={(e) => { e.preventDefault(); onDelete(bookmark); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Delete</a>
       <a href="#" onClick={(e) => { e.preventDefault(); onReorder(); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Reorder</a>
     </div>
   );
 }
+
 
 function CategoryMenu(props: { 
   category: Item,
