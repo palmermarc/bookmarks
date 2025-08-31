@@ -752,7 +752,6 @@ export default function DashboardPage() {
         
         <main className="flex-1 flex mt-[85px]">
           <div className="w-1/5 p-4 border-r border-gray-700">
-            <h2 className="text-white text-lg font-bold mb-4">Categories</h2>
             <ul>
               <SortableContext items={categories.map(c => c.id)} strategy={verticalListSortingStrategy}>
                 {categories.map(category => (
