@@ -953,13 +953,9 @@ export default function DashboardPage() {
       // Reorder the folder bookmarks
       const reorderedFolderBookmarks = arrayMove(folderBookmarks, oldIndex, newIndex);
       
-      // Update the main bookmarks array with the reordered folder bookmarks
-      const updatedBookmarks = bookmarks.map(bookmark => {
-        if (bookmark.parent_id === selectedFolder.id) {
-          return reorderedFolderBookmarks.find(item => item.id === bookmark.id) || bookmark;
-        }
-        return bookmark;
-      });
+      // Create a new bookmarks array with the reordered folder bookmarks
+      const otherBookmarks = bookmarks.filter(bookmark => bookmark.parent_id !== selectedFolder.id);
+      const updatedBookmarks = [...otherBookmarks, ...reorderedFolderBookmarks];
       
       setBookmarks(updatedBookmarks);
     }
