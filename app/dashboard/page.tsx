@@ -1093,19 +1093,22 @@ export default function DashboardPage() {
                     </SortableContext>
                   </DndContext>
                   {!reorderBookmarksMode && (
-                    <button 
-                      onClick={() => {
-                        setItemType('bookmark');
-                        setParentId(selectedCategory);
-                        setIsModalOpen(true);
-                      }}
-                      className="w-full mt-4 px-4 py-2 text-white rounded-lg transition-colors hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" 
-                      style={{ 
-                        backgroundColor: '#E8000A',
-                        textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
-                      }}>
-                      + Add Bookmark to Category
-                    </button>
+                    <div className="flex justify-center mt-4">
+                      <button 
+                        onClick={() => {
+                          setItemType('bookmark');
+                          setParentId(selectedCategory);
+                          setIsModalOpen(true);
+                        }}
+                        className="px-4 py-2 text-white rounded-lg transition-colors hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" 
+                        style={{ 
+                          backgroundColor: '#E8000A',
+                          textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)',
+                          maxWidth: '300px'
+                        }}>
+                        + Add Bookmark to Category
+                      </button>
+                    </div>
                   )}
                   {reorderBookmarksMode && (
                     <button 
