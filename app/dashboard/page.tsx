@@ -181,8 +181,8 @@ function SortableFolder(props: {
       }}
     >
       <div className="flex flex-col items-center text-white">
-        <div className="mb-2 flex justify-center items-center" style={{ width: '75px', height: '75px' }}>
-          <IconRenderer icon={item.icon} className="w-12 h-12 text-white" />
+        <div className="flex justify-center items-center" style={{ width: '75px', height: '75px', marginBottom: '5px' }}>
+          <IconRenderer icon={item.icon} className="text-white" style={{ width: '50px', height: '50px' }} />
         </div>
         <div className="text-center text-sm break-words" style={{ width: '100px' }}>
           {item.name}
