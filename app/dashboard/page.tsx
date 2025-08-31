@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import IconSelectorModal from '@/app/components/IconSelectorModal'
+import IconRenderer from '@/app/components/IconRenderer'
 import { Item } from '@/lib/definitions';
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
@@ -54,7 +55,10 @@ function SortableBookmarkItem(props: {
           autoFocus
         />
       ) : (
-        <a href={item.url} target="_blank" rel="noopener noreferrer">{item.name}</a>
+        <a href={item.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+          <IconRenderer icon={item.icon} className="w-4 h-4 text-white" />
+          <span>{item.name}</span>
+        </a>
       )}
       <div className="relative">
         <button onClick={(e) => { e.stopPropagation(); setMenuPosition(null); setIsMenuOpen(!isMenuOpen); }} className="text-white">
@@ -194,7 +198,10 @@ function SortableItem(props: {
           autoFocus
         />
       ) : (
-        <span>{item.name}</span>
+        <div className="flex items-center gap-2">
+          <IconRenderer icon={item.icon} className="w-4 h-4 text-white" />
+          <span>{item.name}</span>
+        </div>
       )}
       <div className="relative">
         <button onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen); }} className="text-white">
