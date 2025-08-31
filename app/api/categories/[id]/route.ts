@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { updateCategoryName, deleteCategoryAndChildren } from '@/lib/db';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function PUT(req: NextRequest, { params }: any) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
@@ -20,6 +21,7 @@ export async function PUT(req: NextRequest, { params }: any) {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function DELETE(req: NextRequest, { params }: any) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
