@@ -1101,7 +1101,12 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="p-6 max-h-[60vh] overflow-y-auto">
-                <div className="mb-4">
+                {bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id).length === 0 && (
+                  <div className="text-center text-gray-400 py-8 mb-4">
+                    <p>No bookmarks in this folder yet.</p>
+                  </div>
+                )}
+                <div className="mb-4 flex justify-center">
                   <button
                     onClick={() => {
                       setIsFolderModalOpen(false);
@@ -1109,64 +1114,62 @@ export default function DashboardPage() {
                       setParentId(selectedFolder.id);
                       setIsModalOpen(true);
                     }}
-                    className="w-full py-3 px-4 text-white font-semibold rounded-lg transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                    className="py-3 px-4 text-white font-semibold rounded-lg transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                     style={{ 
                       backgroundColor: '#E8000A',
-                      textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
+                      textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)',
+                      width: '400px'
                     }}
                   >
                     + Add a Bookmark to this folder
                   </button>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  {bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id).map(bookmark => (
-                    <div key={bookmark.id} className="flex flex-col gap-2 p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors">
-                      <div className="flex items-center gap-2">
-                        <IconRenderer icon={bookmark.icon} className="w-5 h-5 text-white flex-shrink-0" />
-                        <a 
-                          href={bookmark.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex-1 text-white hover:text-blue-300 transition-colors truncate text-sm"
-                          title={bookmark.name}
-                        >
-                          {bookmark.name}
-                        </a>
+                {bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id).length > 0 && (
+                  <div className="grid grid-cols-3 gap-3">
+                    {bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id).map(bookmark => (
+                      <div key={bookmark.id} className="flex flex-col gap-2 p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <IconRenderer icon={bookmark.icon} className="w-5 h-5 text-white flex-shrink-0" />
+                          <a 
+                            href={bookmark.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex-1 text-white hover:text-blue-300 transition-colors truncate text-sm"
+                            title={bookmark.name}
+                          >
+                            {bookmark.name}
+                          </a>
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={() => {
+                              handleEditBookmark(bookmark);
+                              setIsFolderModalOpen(false);
+                            }}
+                            className="text-gray-400 hover:text-white transition-colors"
+                            title="Edit"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleDeleteBookmark(bookmark);
+                              setIsFolderModalOpen(false);
+                            }}
+                            className="text-gray-400 hover:text-red-400 transition-colors"
+                            title="Delete"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex gap-2 justify-end">
-                        <button
-                          onClick={() => {
-                            handleEditBookmark(bookmark);
-                            setIsFolderModalOpen(false);
-                          }}
-                          className="text-gray-400 hover:text-white transition-colors"
-                          title="Edit"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => {
-                            handleDeleteBookmark(bookmark);
-                            setIsFolderModalOpen(false);
-                          }}
-                          className="text-gray-400 hover:text-red-400 transition-colors"
-                          title="Delete"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  {bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id).length === 0 && (
-                    <div className="col-span-3 text-center text-gray-400 py-8">
-                      <p>No bookmarks in this folder yet.</p>
-                    </div>
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
