@@ -1,26 +1,153 @@
 'use client'
 
-import { useSession, signOut } from 'next-auth/react'
+import Image from 'next/image'
+import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { supabase } from '@lib/supabase'
+import { useEffect, useState, useRef } from 'react'
 import IconSelectorModal from '@/app/components/IconSelectorModal'
+import { Item } from '@/lib/definitions';
+import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+function CategoryMenu(props: { 
+  category: Item,
+  onEdit: (item: Item) => void,
+  onDelete: (item: Item) => void,
+  onReorder: () => void,
+  onClose: () => void,
+}) {
+  const { category, onEdit, onDelete, onReorder, onClose } = props;
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [onClose]);
+
+  return (
+    <div ref={menuRef} className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg z-20">
+      <a href="#" onClick={(e) => { e.preventDefault(); onEdit(category); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Edit</a>
+      <a href="#" onClick={(e) => { e.preventDefault(); onDelete(category); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Delete</a>
+      <a href="#" onClick={(e) => { e.preventDefault(); onReorder(); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Reorder</a>
+    </div>
+  );
+}
+
+function SortableItem(props: { 
+  item: Item, 
+  selectedCategory: number | null, 
+  setSelectedCategory: (id: number) => void,
+  onEdit: (item: Item) => void,
+  onDelete: (item: Item) => void,
+  onReorder: () => void,
+  isEditing: boolean,
+  editedName: string,
+  onNameChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
+  onNameBlur: () => void,
+  onNameKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void,
+  reorderMode: boolean,
+}) {
+  const { item, selectedCategory, setSelectedCategory, onEdit, onDelete, onReorder, isEditing, editedName, onNameChange, onNameBlur, onNameKeyDown, reorderMode } = props;
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const dndListeners = reorderMode ? listeners : {};
+
+  return (
+    <li ref={setNodeRef} style={style} {...attributes} {...dndListeners} 
+        className={`p-2 rounded cursor-pointer flex justify-between items-center ${selectedCategory === item.id ? 'bg-gray-700' : ''}`}
+        onClick={() => setSelectedCategory(item.id)}>
+      {isEditing ? (
+        <input 
+          type="text" 
+          value={editedName} 
+          onChange={onNameChange}
+          onBlur={onNameBlur}
+          onKeyDown={onNameKeyDown}
+          className="bg-gray-700 text-white w-full"
+          autoFocus
+        />
+      ) : (
+        <span>{item.name}</span>
+      )}
+      <div className="relative">
+        <button onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen); }} className="text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
+          </svg>
+        </button>
+        {isMenuOpen && (
+          <CategoryMenu 
+            category={item} 
+            onEdit={onEdit} 
+            onDelete={onDelete} 
+            onReorder={onReorder}
+            onClose={() => setIsMenuOpen(false)}
+          />
+        )}
+      </div>
+    </li>
+  );
+}
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [name, setName] = useState('');
-  const [isFolder, setIsFolder] = useState(false);
-  const [isCategory, setIsCategory] = useState(false);
+  const [itemType, setItemType] = useState<'bookmark' | 'folder' | 'category'>('bookmark');
+  const [parentId, setParentId] = useState<number | null>(null);
   const [selectedIcon, setSelectedIcon] = useState('');
   const [isIconModalOpen, setIsIconModalOpen] = useState(false);
+  const [items, setItems] = useState<Item[]>([]);
+  const [url, setUrl] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [categories, setCategories] = useState<Item[]>([]);
+  const [folders, setFolders] = useState<Item[]>([]);
+  const [bookmarks, setBookmarks] = useState<Item[]>([]);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletingCategory, setDeletingCategory] = useState<Item | null>(null);
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const [editedCategoryName, setEditedCategoryName] = useState('');
+  const [reorderMode, setReorderMode] = useState(false);
+  
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/')
     }
-  }, [status, router])
+    if (status === 'authenticated') {
+      fetchItems();
+    }
+  }, [status, router]);
+
+  const fetchItems = async () => {
+    const res = await fetch('/api/items');
+    if (res.ok) {
+      const data = await res.json();
+      setItems(data);
+      const cats = data.filter((item: Item) => item.type === 'category');
+      setCategories(cats);
+      setFolders(data.filter((item: Item) => item.type === 'folder'));
+      setBookmarks(data.filter((item: Item) => item.type === 'bookmark'));
+      if (cats.length > 0 && !selectedCategory) {
+        setSelectedCategory(cats[0].id);
+      }
+    }
+  };
 
   if (status === 'loading') {
     return (
@@ -30,39 +157,67 @@ export default function DashboardPage() {
     )
   }
 
-  // The session object is available when the status is "authenticated"
   if (!session) {
-    return null; // Don't render anything if not authenticated yet
+    return null;
   }
 
   const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    try {
-      // Add a new document to the 'items' table
-      const { data, error } = await supabase
-        .from('items')
-        .insert([{
-          name,
-          is_folder: isFolder,
-          is_category: isCategory,
-          icon: selectedIcon, // Using selectedIcon
-          user_id: session.user?.email, // Using email as a unique user identifier
-        }])
-        .select();
+    const finalParentId = parentId;
+    const finalType = itemType;
 
-      if (error) {
-        throw error;
+    try {
+      if (itemType === 'folder') {
+        if (categories.length === 0) {
+          // Create a default category first
+          const newCategory = {
+            name: 'General',
+            icon: 'fa-solid fa-folder',
+            type: 'category',
+            parent_id: null,
+          };
+          const res = await fetch('/api/items', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newCategory),
+          });
+          if (!res.ok) throw new Error('Failed to create default category');
+          alert('We created a default category named \'General\'. Please select it and submit again.');
+          fetchItems();
+          setIsModalOpen(false);
+          return;
+        }
       }
-      
-      console.log("Document saved:", data);
-      
-      // Reset form and close modal
+
+      const newItem: Partial<Item> = {
+        name,
+        icon: selectedIcon,
+        type: finalType,
+        parent_id: finalParentId,
+      };
+
+      if (itemType === 'bookmark') {
+        newItem.url = url;
+      }
+
+      const res = await fetch('/api/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newItem),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to save item');
+      }
+
       setName('');
-      setIsFolder(false);
-      setIsCategory(false);
+      setItemType('bookmark');
+      setParentId(null);
       setSelectedIcon('');
+      setUrl('');
       setIsModalOpen(false);
+      fetchItems();
 
     } catch (error) {
       console.error("Error saving document:", error);
@@ -70,130 +225,303 @@ export default function DashboardPage() {
     }
   };
 
-  return (
-    <div className="flex flex-col min-h-screen" style={{ backgroundColor: '#36453F' }}>
-      {/* Header section */}
-      <header className="fixed top-0 left-0 w-full flex items-center justify-between h-[85px] p-4 z-10" style={{ backgroundColor: '#1a1a1a', borderBottom: '1px solid #E8000A' }}>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2" style={{ backgroundColor: '#E8000A', transition: 'background-color 0.3s ease-in-out', textShadow: '1px 1px 2px black' }}>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5" style={{ textShadow: '1px 1px 2px black' }}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-          New
-        </button>
-        {session.user?.image && (
-          <img
-            src={session.user.image}
-            alt="User profile"
-            className="w-12 h-12 rounded-full border-2 border-[#E8000A]"
-          />
-        )}
-      </header>
-      
-      {/* Main content section */}
-      <main className="flex-1 flex flex-col items-center justify-center p-4 mt-[85px]">
-        <div className="p-8 rounded-lg shadow-2xl text-center max-w-lg w-full" style={{ backgroundColor: '#1a1a1a' }}>
-          <h1 className="text-3xl sm:text-4xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-teal-500">
-            Welcome Back, {session.user?.name}!
-          </h1>
-          <p className="text-lg text-gray-400 mb-6">
-            You are now signed in with your Google account.
-          </p>
-          <div className="text-left p-4 rounded-lg mb-6" style={{ backgroundColor: '#36453F' }}>
-            <p className="font-bold">Session Details:</p>
-            <ul className="list-disc list-inside mt-2 text-gray-300">
-              <li>Name: {session.user?.name}</li>
-              <li>Email: {session.user?.email}</li>
-            </ul>
-          </div>
-          <button
-            onClick={() => signOut()}
-            className="text-white font-bold py-3 px-6 rounded-full transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2" style={{ backgroundColor: '#E8000A' }}>
-            Sign Out
-          </button>
-        </div>
-      </main>
+  const handleDragEnd = async (event: DragEndEvent) => {
+    if (!reorderMode) return;
+    const { active, over } = event;
 
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
-            <h2 className="text-xl font-bold mb-4 text-white">Create New</h2>
-            <form onSubmit={handleFormSubmit}>
-              <div className="mb-4">
-                <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">Name</label>
-                <input
-                  type="text"
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
-                  style={{ backgroundColor: '#36453F' }}
-                />
-              </div>
-              <div className="mb-4">
-                <label htmlFor="icon" className="block text-sm font-medium text-gray-300 mb-1">Icon</label>
-                <button
-                  type="button"
-                  onClick={() => setIsIconModalOpen(true)}
-                  className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
-                  style={{ backgroundColor: '#36453F' }}
-                >
-                  {selectedIcon ? selectedIcon : 'Select Icon'}
-                </button>
-              </div>
-              <div className="flex justify-between items-center mb-6 text-sm text-gray-300">
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={isFolder}
-                    onChange={(e) => setIsFolder(e.target.checked)}
-                    className="form-checkbox text-[#E8000A] rounded"
+    if (active.id !== over?.id) {
+      const oldIndex = categories.findIndex((item) => item.id === active.id);
+      const newIndex = categories.findIndex((item) => item.id === over?.id);
+      const newOrder = arrayMove(categories, oldIndex, newIndex);
+      setCategories(newOrder);
+    }
+  };
+
+  const handleEditCategory = (category: Item) => {
+    setEditingCategoryId(category.id);
+    setEditedCategoryName(category.name);
+  };
+
+  const handleDeleteCategory = (category: Item) => {
+    setDeletingCategory(category);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleUpdateCategoryName = async () => {
+    if (!editingCategoryId) return;
+
+    try {
+      const res = await fetch(`/api/categories/${editingCategoryId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editedCategoryName }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to update category');
+      }
+
+      setEditingCategoryId(null);
+      fetchItems();
+    } catch (error) {
+      console.error("Error updating category:", error);
+      alert('Failed to update category. Please check the console for details.');
+    }
+  };
+
+  const confirmDeleteCategory = async () => {
+    if (!deletingCategory) return;
+
+    try {
+      const res = await fetch(`/api/categories/${deletingCategory.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to delete category');
+      }
+
+      setIsDeleteModalOpen(false);
+      setDeletingCategory(null);
+      fetchItems();
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      alert('Failed to delete category. Please check the console for details.');
+    }
+  };
+
+  const handleSaveReorder = async () => {
+    try {
+      const res = await fetch('/api/items/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: categories }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to reorder items');
+      }
+      setReorderMode(false);
+    } catch (error) {
+      console.error("Error reordering items:", error);
+      alert('Failed to reorder items. Please check the console for details.');
+      fetchItems();
+    }
+  };
+
+  return (
+    <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <div className="flex flex-col min-h-screen" style={{ backgroundColor: '#36453F' }}>
+        <header className="fixed top-0 left-0 w-full flex items-center justify-between h-[85px] p-4 z-10" style={{ backgroundColor: '#1a1a1a', borderBottom: '1px solid #E8000A' }}>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2" style={{ backgroundColor: '#E8000A' }}>
+            New
+          </button>
+          {session.user?.image && (
+            <Image
+              src={session.user.image}
+              alt="User profile"
+              width={48}
+              height={48}
+              className="rounded-full border-2 border-[#E8000A]"
+            />
+          )}
+        </header>
+        
+        <main className="flex-1 flex mt-[85px]">
+          <div className="w-1/5 p-4 border-r border-gray-700">
+            <h2 className="text-white text-lg font-bold mb-4">Categories</h2>
+            <ul>
+              <SortableContext items={categories.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                {categories.map(category => (
+                  <SortableItem 
+                    key={category.id} 
+                    item={category} 
+                    selectedCategory={selectedCategory} 
+                    setSelectedCategory={setSelectedCategory}
+                    onEdit={handleEditCategory}
+                    onDelete={handleDeleteCategory}
+                    onReorder={() => setReorderMode(true)}
+                    isEditing={editingCategoryId === category.id}
+                    editedName={editedCategoryName}
+                    onNameChange={(e) => setEditedCategoryName(e.target.value)}
+                    onNameBlur={handleUpdateCategoryName}
+                    onNameKeyDown={(e) => e.key === 'Enter' && handleUpdateCategoryName()}
+                    reorderMode={reorderMode}
                   />
-                  <span>Is a Folder</span>
-                </label>
-                <label className="flex items-center space-x-2">
+                ))}
+              </SortableContext>
+            </ul>
+            {reorderMode && (
+              <button 
+                onClick={handleSaveReorder}
+                className="w-full mt-4 px-4 py-2 text-white rounded-lg transition-colors" 
+                style={{ backgroundColor: '#E8000A' }}>
+                Save Order
+              </button>
+            )}
+          </div>
+          <div className="w-4/5 p-4">
+            <div className="w-full">
+              {selectedCategory && (
+                <>
+                  {folders.filter(item => item.parent_id === selectedCategory).map(folder => (
+                    <div key={folder.id} className="text-white p-2 border-b border-gray-700">
+                      {folder.name}
+                    </div>
+                  ))}
+                  <hr className="my-4" />
+                  {bookmarks.filter(item => {
+                    const parentFolder = folders.find(f => f.id === item.parent_id);
+                    return item.parent_id === selectedCategory || parentFolder?.parent_id === selectedCategory;
+                  }).map(bookmark => (
+                    <div key={bookmark.id} className="text-white p-2 border-b border-gray-700">
+                      <a href={bookmark.url} target="_blank" rel="noopener noreferrer">{bookmark.name}</a>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+        </main>
+
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+            <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
+              <h2 className="text-xl font-bold mb-4 text-white">Create New</h2>
+              <form onSubmit={handleFormSubmit}>
+                <div className="mb-4">
+                  <label htmlFor="itemType" className="block text-sm font-medium text-gray-300 mb-1">Type</label>
+                  <select
+                    id="itemType"
+                    value={itemType}
+                    onChange={(e) => setItemType(e.target.value as 'bookmark' | 'folder' | 'category')}
+                    className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
+                    style={{ backgroundColor: '#36453F' }}
+                  >
+                    <option value="bookmark">Bookmark</option>
+                    <option value="folder">Folder</option>
+                    <option value="category">Category</option>
+                  </select>
+                </div>
+
+                <div className="mb-4">
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">Name</label>
                   <input
-                    type="checkbox"
-                    checked={isCategory}
-                    onChange={(e) => setIsCategory(e.target.checked)}
-                    className="form-checkbox text-[#E8000A] rounded"
+                    type="text"
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
+                    style={{ backgroundColor: '#36453F' }}
                   />
-                  <span>Is a Category</span>
-                </label>
-              </div>
+                </div>
+
+                {itemType === 'bookmark' && (
+                  <div className="mb-4">
+                    <label htmlFor="url" className="block text-sm font-medium text-gray-300 mb-1">URL</label>
+                    <input
+                      type="url"
+                      id="url"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      required
+                      className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
+                      style={{ backgroundColor: '#36453F' }}
+                    />
+                  </div>
+                )}
+
+                <div className="mb-4">
+                  <label htmlFor="icon" className="block text-sm font-medium text-gray-300 mb-1">Icon</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsIconModalOpen(true)}
+                    className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
+                    style={{ backgroundColor: '#36453F' }}
+                  >
+                    {selectedIcon ? selectedIcon : 'Select Icon'}
+                  </button>
+                </div>
+
+                {(itemType === 'bookmark' || itemType === 'folder') && (
+                  <div className="mb-4">
+                    <label htmlFor="parentId" className="block text-sm font-medium text-gray-300 mb-1">
+                      {itemType === 'bookmark' ? 'Category/Folder' : 'Category'}
+                    </label>
+                    <select
+                      id="parentId"
+                      value={parentId || ''}
+                      onChange={(e) => setParentId(Number(e.target.value))}
+                      required
+                      className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
+                      style={{ backgroundColor: '#36453F' }}
+                    >
+                      <option value="">Select Parent</option>
+                      {itemType === 'folder' && categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                      {itemType === 'bookmark' && [...categories, ...folders].map(item => (
+                        <option key={item.id} value={item.id}>{item.name} ({item.type})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 text-white rounded-lg transition-colors"
+                    style={{ backgroundColor: '#36453F' }}>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-white rounded-lg transition-colors"
+                    style={{ backgroundColor: '#E8000A' }}>
+                    Create
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {isDeleteModalOpen && deletingCategory && (
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+            <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
+              <h2 className="text-xl font-bold mb-4 text-white">Delete Category</h2>
+              <p className="text-white mb-4">Are you sure you want to delete the category "{deletingCategory.name}"? This will remove all folders and bookmarks within this category.</p>
               <div className="flex justify-end gap-4">
                 <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => setIsDeleteModalOpen(false)}
                   className="px-4 py-2 text-white rounded-lg transition-colors"
-                  style={{ backgroundColor: '#36453F', transition: 'background-color 0.3s ease-in-out' }}
-                >
-                  Cancel
+                  style={{ backgroundColor: '#36453F' }}>
+                  No
                 </button>
                 <button
-                  type="submit"
+                  onClick={confirmDeleteCategory}
                   className="px-4 py-2 text-white rounded-lg transition-colors"
-                  style={{ backgroundColor: '#E8000A' }}
-                >
-                  Create
+                  style={{ backgroundColor: '#E8000A' }}>
+                  Yes
                 </button>
               </div>
-            </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <IconSelectorModal
-        isOpen={isIconModalOpen}
-        onClose={() => setIsIconModalOpen(false)}
-        onSelectIcon={(icon) => {
-          setSelectedIcon(icon);
-          setIsIconModalOpen(false);
-        }}
-      />
-    </div>
+        <IconSelectorModal
+          isOpen={isIconModalOpen}
+          onClose={() => setIsIconModalOpen(false)}
+          onSelectIcon={(icon) => {
+            setSelectedIcon(icon);
+            setIsIconModalOpen(false);
+          }}
+        />
+      </div>
+    </DndContext>
   )
 }
