@@ -636,14 +636,29 @@ export default function DashboardPage() {
   };
 
   const handleBookmarkDragEnd = async (event: DragEndEvent) => {
-    if (!reorderBookmarksMode) return;
+    if (!reorderBookmarksMode || !selectedCategory) return;
+    
     const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-    if (active.id !== over?.id) {
-      const oldIndex = bookmarks.findIndex((item) => item.id === active.id);
-      const newIndex = bookmarks.findIndex((item) => item.id === over?.id);
-      const newOrder = arrayMove(bookmarks, oldIndex, newIndex);
-      setBookmarks(newOrder);
+    // Get only the bookmarks in this category
+    const categoryBookmarks = bookmarks.filter(bookmark => bookmark.parent_id === selectedCategory);
+    const oldIndex = categoryBookmarks.findIndex((item) => item.id === active.id);
+    const newIndex = categoryBookmarks.findIndex((item) => item.id === over.id);
+    
+    if (oldIndex !== -1 && newIndex !== -1) {
+      // Reorder the category bookmarks
+      const reorderedCategoryBookmarks = arrayMove(categoryBookmarks, oldIndex, newIndex);
+      
+      // Update the main bookmarks array with the reordered category bookmarks
+      const updatedBookmarks = bookmarks.map(bookmark => {
+        if (bookmark.parent_id === selectedCategory) {
+          return reorderedCategoryBookmarks.find(item => item.id === bookmark.id) || bookmark;
+        }
+        return bookmark;
+      });
+      
+      setBookmarks(updatedBookmarks);
     }
   };
 
@@ -883,11 +898,14 @@ export default function DashboardPage() {
   };
 
   const handleSaveBookmarkReorder = async () => {
+    if (!selectedCategory) return;
+    
     try {
+      const categoryBookmarks = bookmarks.filter(bookmark => bookmark.parent_id === selectedCategory);
       const res = await fetch('/api/items/reorder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: bookmarks }),
+        body: JSON.stringify({ items: categoryBookmarks }),
       });
 
       if (!res.ok) {
@@ -1126,7 +1144,7 @@ export default function DashboardPage() {
 
         {isEditBookmarkModalOpen && editingBookmark && (
           <div 
-            className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-50"
             onClick={() => setIsEditBookmarkModalOpen(false)}
           >
             <div 
