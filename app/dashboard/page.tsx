@@ -145,6 +145,93 @@ function CategoryMenu(props: {
   );
 }
 
+function SortableFolder(props: {
+  item: Item,
+  onEdit: (item: Item) => void,
+  onDelete: (item: Item) => void,
+  onReorder: () => void,
+  reorderMode: boolean,
+}) {
+  const { item, onEdit, onDelete, onReorder, reorderMode } = props;
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const dndListeners = reorderMode ? listeners : {};
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...dndListeners}
+      className="inline-block cursor-pointer relative"
+      style={{
+        ...style,
+        margin: '10px 20px',
+        width: '100px',
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsMenuOpen(true);
+      }}
+    >
+      <div className="flex flex-col items-center text-white">
+        <div className="mb-2 flex justify-center items-center" style={{ width: '75px', height: '75px' }}>
+          <IconRenderer icon={item.icon} className="w-12 h-12 text-white" />
+        </div>
+        <div className="text-center text-sm break-words" style={{ width: '100px' }}>
+          {item.name}
+        </div>
+      </div>
+      {isMenuOpen && (
+        <FolderMenu
+          folder={item}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onReorder={onReorder}
+          onClose={() => setIsMenuOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function FolderMenu(props: {
+  folder: Item,
+  onEdit: (item: Item) => void,
+  onDelete: (item: Item) => void,
+  onReorder: () => void,
+  onClose: () => void,
+}) {
+  const { folder, onEdit, onDelete, onReorder, onClose } = props;
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [onClose]);
+
+  return (
+    <div ref={menuRef} className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg z-20">
+      <a href="#" onClick={(e) => { e.preventDefault(); onEdit(folder); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Edit</a>
+      <a href="#" onClick={(e) => { e.preventDefault(); onDelete(folder); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Delete</a>
+      <a href="#" onClick={(e) => { e.preventDefault(); onReorder(); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Reorder</a>
+    </div>
+  );
+}
+
 function SortableItem(props: { 
   item: Item, 
   selectedCategory: number | null, 
@@ -234,6 +321,10 @@ export default function DashboardPage() {
   const [deletingBookmark, setDeletingBookmark] = useState<Item | null>(null);
   const [editingCategory, setEditingCategory] = useState<Item | null>(null);
   const [isEditCategoryModalOpen, setIsEditCategoryModalOpen] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<Item | null>(null);
+  const [isEditFolderModalOpen, setIsEditFolderModalOpen] = useState(false);
+  const [deletingFolder, setDeletingFolder] = useState<Item | null>(null);
+  const [reorderFoldersMode, setReorderFoldersMode] = useState(false);
 
   const fetchItems = useCallback(async () => {
     const res = await fetch('/api/items');
@@ -378,6 +469,16 @@ export default function DashboardPage() {
     setIsDeleteModalOpen(true);
   };
 
+  const handleEditFolder = (folder: Item) => {
+    setEditingFolder(folder);
+    setIsEditFolderModalOpen(true);
+  };
+
+  const handleDeleteFolder = (folder: Item) => {
+    setDeletingFolder(folder);
+    setIsDeleteModalOpen(true);
+  };
+
   const handleUpdateCategory = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editingCategory) return;
@@ -424,6 +525,34 @@ export default function DashboardPage() {
     } catch (error) {
       console.error("Error updating category:", error);
       alert('Failed to update category. Please check the console for details.');
+    }
+  };
+
+  const handleUpdateFolder = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingFolder) return;
+
+    try {
+      const res = await fetch(`/api/items/${editingFolder.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editingFolder.name,
+          parent_id: editingFolder.parent_id,
+          icon: editingFolder.icon,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to update folder');
+      }
+
+      setIsEditFolderModalOpen(false);
+      setEditingFolder(null);
+      fetchItems();
+    } catch (error) {
+      console.error("Error updating folder:", error);
+      alert('Failed to update folder. Please check the console for details.');
     }
   };
 
@@ -498,6 +627,27 @@ export default function DashboardPage() {
     }
   };
 
+  const confirmDeleteFolder = async () => {
+    if (!deletingFolder) return;
+
+    try {
+      const res = await fetch(`/api/items/${deletingFolder.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to delete folder');
+      }
+
+      setIsDeleteModalOpen(false);
+      setDeletingFolder(null);
+      fetchItems();
+    } catch (error) {
+      console.error("Error deleting folder:", error);
+      alert('Failed to delete folder. Please check the console for details.');
+    }
+  };
+
   const handleSaveReorder = async () => {
     try {
       const res = await fetch('/api/items/reorder', {
@@ -517,6 +667,18 @@ export default function DashboardPage() {
     }
   };
 
+  const handleFolderDragEnd = async (event: DragEndEvent) => {
+    if (!reorderFoldersMode) return;
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const oldIndex = folders.findIndex((item) => item.id === active.id);
+      const newIndex = folders.findIndex((item) => item.id === over?.id);
+      const newOrder = arrayMove(folders, oldIndex, newIndex);
+      setFolders(newOrder);
+    }
+  };
+
   const handleSaveBookmarkReorder = async () => {
     try {
       const res = await fetch('/api/items/reorder', {
@@ -532,6 +694,25 @@ export default function DashboardPage() {
     } catch (error) {
       console.error("Error reordering bookmarks:", error);
       alert('Failed to reorder bookmarks. Please check the console for details.');
+      fetchItems();
+    }
+  };
+
+  const handleSaveFolderReorder = async () => {
+    try {
+      const res = await fetch('/api/items/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: folders }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to reorder folders');
+      }
+      setReorderFoldersMode(false);
+    } catch (error) {
+      console.error("Error reordering folders:", error);
+      alert('Failed to reorder folders. Please check the console for details.');
       fetchItems();
     }
   };
@@ -593,11 +774,30 @@ export default function DashboardPage() {
             <div className="w-full">
               {selectedCategory && (
                 <>
-                  {folders.filter(item => item.parent_id === selectedCategory).map(folder => (
-                    <div key={folder.id} className="text-white p-2 border-b border-gray-700">
-                      {folder.name}
-                    </div>
-                  ))}
+                  <div className="mb-4">
+                    <DndContext collisionDetection={closestCenter} onDragEnd={handleFolderDragEnd}>
+                      <SortableContext items={folders.map(f => f.id)} strategy={verticalListSortingStrategy}>
+                        {folders.filter(item => item.parent_id === selectedCategory).map(folder => (
+                          <SortableFolder
+                            key={folder.id}
+                            item={folder}
+                            onEdit={handleEditFolder}
+                            onDelete={handleDeleteFolder}
+                            onReorder={() => setReorderFoldersMode(true)}
+                            reorderMode={reorderFoldersMode}
+                          />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
+                    {reorderFoldersMode && (
+                      <button 
+                        onClick={handleSaveFolderReorder}
+                        className="w-full mt-4 px-4 py-2 text-white rounded-lg transition-colors" 
+                        style={{ backgroundColor: '#E8000A' }}>
+                        Save Folder Order
+                      </button>
+                    )}
+                  </div>
                   <hr className="my-4" />
                   <DndContext collisionDetection={closestCenter} onDragEnd={handleBookmarkDragEnd}>
                     <SortableContext items={bookmarks.map(b => b.id)} strategy={verticalListSortingStrategy}>
@@ -772,6 +972,80 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {isEditFolderModalOpen && editingFolder && (
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+            <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
+              <h2 className="text-xl font-bold mb-4 text-white">Edit Folder</h2>
+              <form onSubmit={handleUpdateFolder}>
+                <div className="mb-4">
+                  <label htmlFor="folderName" className="block text-sm font-medium text-gray-300 mb-1">Name</label>
+                  <input
+                    type="text"
+                    id="folderName"
+                    value={editingFolder.name}
+                    onChange={(e) => setEditingFolder({ ...editingFolder, name: e.target.value })}
+                    required
+                    className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
+                    style={{ backgroundColor: '#36453F' }}
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label htmlFor="folderCategory" className="block text-sm font-medium text-gray-300 mb-1">Category</label>
+                  <select
+                    id="folderCategory"
+                    value={editingFolder.parent_id || ''}
+                    onChange={(e) => setEditingFolder({ ...editingFolder, parent_id: Number(e.target.value) })}
+                    required
+                    className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
+                    style={{ backgroundColor: '#36453F' }}
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map(category => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mb-4">
+                  <label htmlFor="folderIcon" className="block text-sm font-medium text-gray-300 mb-1">Icon</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsIconModalOpen(true)}
+                    className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A] flex items-center gap-2"
+                    style={{ backgroundColor: '#36453F' }}
+                  >
+                    {editingFolder.icon ? (
+                      <>
+                        <IconRenderer icon={editingFolder.icon} className="w-4 h-4 text-white" />
+                        <span>{editingFolder.icon}</span>
+                      </>
+                    ) : (
+                      <span>Select Icon</span>
+                    )}
+                  </button>
+                </div>
+
+                <div className="flex justify-end gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditFolderModalOpen(false)}
+                    className="px-4 py-2 text-white rounded-lg transition-colors"
+                    style={{ backgroundColor: '#36453F' }}>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-white rounded-lg transition-colors"
+                    style={{ backgroundColor: '#E8000A' }}>
+                    Update
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {isModalOpen && (
           <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
             <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
@@ -876,20 +1150,25 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {isDeleteModalOpen && (deletingCategory || deletingBookmark) && (
+        {isDeleteModalOpen && (deletingCategory || deletingBookmark || deletingFolder) && (
           <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
             <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
-              <h2 className="text-xl font-bold mb-4 text-white">Delete {deletingCategory ? 'Category' : 'Bookmark'}</h2>
-              <p className="text-white mb-4">Are you sure you want to delete the {deletingCategory ? 'category' : 'bookmark'} &quot;{deletingCategory?.name || deletingBookmark?.name}&quot;? {deletingCategory && 'This will remove all folders and bookmarks within this category.'}</p>
+              <h2 className="text-xl font-bold mb-4 text-white">Delete {deletingCategory ? 'Category' : deletingFolder ? 'Folder' : 'Bookmark'}</h2>
+              <p className="text-white mb-4">Are you sure you want to delete the {deletingCategory ? 'category' : deletingFolder ? 'folder' : 'bookmark'} &quot;{deletingCategory?.name || deletingFolder?.name || deletingBookmark?.name}&quot;? {deletingCategory && 'This will remove all folders and bookmarks within this category.'} {deletingFolder && 'This will remove all bookmarks within this folder.'}</p>
               <div className="flex justify-end gap-4">
                 <button
-                  onClick={() => setIsDeleteModalOpen(false)}
+                  onClick={() => {
+                    setIsDeleteModalOpen(false);
+                    setDeletingCategory(null);
+                    setDeletingBookmark(null);
+                    setDeletingFolder(null);
+                  }}
                   className="px-4 py-2 text-white rounded-lg transition-colors"
                   style={{ backgroundColor: '#36453F' }}>
                   No
                 </button>
                 <button
-                  onClick={deletingCategory ? confirmDeleteCategory : confirmDeleteBookmark}
+                  onClick={deletingCategory ? confirmDeleteCategory : deletingFolder ? confirmDeleteFolder : confirmDeleteBookmark}
                   className="px-4 py-2 text-white rounded-lg transition-colors"
                   style={{ backgroundColor: '#E8000A' }}>
                   Yes
@@ -907,6 +1186,8 @@ export default function DashboardPage() {
               setEditingBookmark({ ...editingBookmark, icon: icon });
             } else if (editingCategory) {
               setEditingCategory({ ...editingCategory, icon: icon });
+            } else if (editingFolder) {
+              setEditingFolder({ ...editingFolder, icon: icon });
             } else {
               setSelectedIcon(icon);
             }
