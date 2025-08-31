@@ -16,8 +16,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       for (let i = 0; i < items.length; i++) {
         await sql`
           UPDATE items
-          SET sort_order = ${i}
-          WHERE id = ${items[i].id}
+          SET "order" = ${i + 1}
+          WHERE id = ${items[i].id} AND user_id = ${session.user.email}
         `;
       }
 

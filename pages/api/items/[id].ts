@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await sql`
         UPDATE items
         SET name = ${name}, parent_id = ${parent_id}, icon = ${icon}, url = ${url}
-        WHERE id = ${Number(id)}
+        WHERE id = ${Number(id)} AND user_id = ${session.user.email}
       `;
 
       return res.status(200).json({ message: 'Item updated' });
@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       await sql`
         DELETE FROM items
-        WHERE id = ${Number(id)}
+        WHERE id = ${Number(id)} AND user_id = ${session.user.email}
       `;
 
       return res.status(200).json({ message: 'Item deleted' });

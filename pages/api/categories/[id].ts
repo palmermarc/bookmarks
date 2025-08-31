@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const { name } = req.body;
       const categoryId = parseInt(id as string, 10);
-      await updateCategoryName(categoryId, name);
+      await updateCategoryName(categoryId, name, session.user.email);
       return res.status(200).json({ message: 'Category updated' });
     } catch (error) {
       console.error(error);
@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else if (req.method === 'DELETE') {
     try {
       const categoryId = parseInt(id as string, 10);
-      await deleteCategoryAndChildren(categoryId);
+      await deleteCategoryAndChildren(categoryId, session.user.email);
       return res.status(200).json({ message: 'Category deleted' });
     } catch (error) {
       console.error(error);

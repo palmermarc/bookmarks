@@ -40,40 +40,42 @@ export async function getItems(userId: string): Promise<Item[]> {
   return rows;
 }
 
-export async function updateCategoryName(categoryId: number, name: string) {
+export async function updateCategoryName(categoryId: number, name: string, userId: string) {
   await sql`
     UPDATE items
     SET name = ${name}
-    WHERE id = ${categoryId} AND type = 'category'
+    WHERE id = ${categoryId} AND type = 'category' AND user_id = ${userId}
   `;
 }
 
-export async function deleteCategoryAndChildren(categoryId: number) {
+export async function deleteCategoryAndChildren(categoryId: number, userId: string) {
   // First, get all folders in the category
   const folders = await sql`
-    SELECT id FROM items WHERE parent_id = ${categoryId} AND type = 'folder'
+    SELECT id FROM items WHERE parent_id = ${categoryId} AND type = 'folder' AND user_id = ${userId}
   `;
   const folderIds = folders.rows.map(f => f.id);
 
   // Delete all bookmarks in those folders
   if (folderIds.length > 0) {
-    await sql`
-      DELETE FROM items WHERE parent_id IN (${folderIds.join(',')}) AND type = 'bookmark'
-    `;
+    for (const folderId of folderIds) {
+      await sql`
+        DELETE FROM items WHERE parent_id = ${folderId} AND type = 'bookmark' AND user_id = ${userId}
+      `;
+    }
   }
 
   // Delete all bookmarks directly in the category
   await sql`
-    DELETE FROM items WHERE parent_id = ${categoryId} AND type = 'bookmark'
+    DELETE FROM items WHERE parent_id = ${categoryId} AND type = 'bookmark' AND user_id = ${userId}
   `;
 
   // Delete all folders in the category
   await sql`
-    DELETE FROM items WHERE parent_id = ${categoryId} AND type = 'folder'
+    DELETE FROM items WHERE parent_id = ${categoryId} AND type = 'folder' AND user_id = ${userId}
   `;
 
   // Finally, delete the category itself
   await sql`
-    DELETE FROM items WHERE id = ${categoryId} AND type = 'category'
+    DELETE FROM items WHERE id = ${categoryId} AND type = 'category' AND user_id = ${userId}
   `;
 }

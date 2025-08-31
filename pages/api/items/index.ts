@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { sql } from '@vercel/postgres';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { createItemsTable, createItem, getItems } from '@/lib/db';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions);
@@ -11,26 +11,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'GET') {
     try {
-      const result = await sql`
-        SELECT * FROM items
-        ORDER BY sort_order ASC, id ASC
-      `;
-      return res.status(200).json(result.rows);
+      const items = await getItems(session.user.email);
+      return res.status(200).json(items);
     } catch (error) {
       console.error(error);
       return res.status(500).json({ error: 'Failed to fetch items' });
     }
   } else if (req.method === 'POST') {
     try {
-      const { name, icon, type, parent_id, url } = req.body;
-
-      const result = await sql`
-        INSERT INTO items (name, icon, type, parent_id, url)
-        VALUES (${name}, ${icon}, ${type}, ${parent_id || null}, ${url || null})
-        RETURNING *
-      `;
-
-      return res.status(201).json(result.rows[0]);
+      await createItemsTable();
+      const items = await getItems(session.user.email);
+      const itemData = req.body;
+      const newItem = { ...itemData, user_id: session.user.email, order: items.length + 1 };
+      await createItem(newItem);
+      return res.status(201).json({ message: 'Item created' });
     } catch (error) {
       console.error(error);
       return res.status(500).json({ error: 'Failed to create item' });
