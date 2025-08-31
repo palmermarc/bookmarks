@@ -150,9 +150,10 @@ function SortableFolder(props: {
   onEdit: (item: Item) => void,
   onDelete: (item: Item) => void,
   onReorder: () => void,
+  onClick: (item: Item) => void,
   reorderMode: boolean,
 }) {
-  const { item, onEdit, onDelete, onReorder, reorderMode } = props;
+  const { item, onEdit, onDelete, onReorder, onClick, reorderMode } = props;
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -174,6 +175,7 @@ function SortableFolder(props: {
         margin: '10px 20px',
         width: '100px',
       }}
+      onClick={() => onClick(item)}
       onContextMenu={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -325,6 +327,8 @@ export default function DashboardPage() {
   const [isEditFolderModalOpen, setIsEditFolderModalOpen] = useState(false);
   const [deletingFolder, setDeletingFolder] = useState<Item | null>(null);
   const [reorderFoldersMode, setReorderFoldersMode] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState<Item | null>(null);
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
 
   const fetchItems = useCallback(async () => {
     const res = await fetch('/api/items');
@@ -477,6 +481,11 @@ export default function DashboardPage() {
   const handleDeleteFolder = (folder: Item) => {
     setDeletingFolder(folder);
     setIsDeleteModalOpen(true);
+  };
+
+  const handleFolderClick = (folder: Item) => {
+    setSelectedFolder(folder);
+    setIsFolderModalOpen(true);
   };
 
   const handleUpdateCategory = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -723,7 +732,11 @@ export default function DashboardPage() {
         <header className="fixed top-0 left-0 w-full flex items-center justify-between h-[85px] p-4 z-10" style={{ backgroundColor: '#1a1a1a', borderBottom: '1px solid #E8000A' }}>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2" style={{ backgroundColor: '#E8000A' }}>
+            className="flex items-center gap-2 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2" 
+            style={{ 
+              backgroundColor: '#E8000A',
+              textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
+            }}>
             New
           </button>
           {session.user?.image && (
@@ -774,6 +787,15 @@ export default function DashboardPage() {
             <div className="w-full">
               {selectedCategory && (
                 <>
+                  <div 
+                    className="mb-6 p-4 text-white font-bold text-xl"
+                    style={{ 
+                      background: 'linear-gradient(to right, #E8000A 33%, transparent 33%)',
+                      textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
+                    }}
+                  >
+                    {categories.find(cat => cat.id === selectedCategory)?.name || 'Category'}
+                  </div>
                   <div className="mb-4">
                     <DndContext collisionDetection={closestCenter} onDragEnd={handleFolderDragEnd}>
                       <SortableContext items={folders.map(f => f.id)} strategy={verticalListSortingStrategy}>
@@ -784,6 +806,7 @@ export default function DashboardPage() {
                             onEdit={handleEditFolder}
                             onDelete={handleDeleteFolder}
                             onReorder={() => setReorderFoldersMode(true)}
+                            onClick={handleFolderClick}
                             reorderMode={reorderFoldersMode}
                           />
                         ))}
@@ -1042,6 +1065,79 @@ export default function DashboardPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {isFolderModalOpen && selectedFolder && (
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+            <div className="rounded-lg shadow-2xl w-11/12 max-w-4xl max-h-[80vh] overflow-hidden" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
+              <div 
+                className="p-4 text-white font-bold text-xl"
+                style={{ 
+                  background: 'linear-gradient(to right, #E8000A 33%, transparent 33%)',
+                  textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
+                }}
+              >
+                <div className="flex justify-between items-center">
+                  <span>{selectedFolder.name}</span>
+                  <button
+                    onClick={() => setIsFolderModalOpen(false)}
+                    className="text-white hover:text-gray-300 text-2xl leading-none"
+                    style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)' }}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              <div className="p-6 max-h-[60vh] overflow-y-auto">
+                <div className="grid gap-3">
+                  {bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id).map(bookmark => (
+                    <div key={bookmark.id} className="flex items-center gap-3 p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors">
+                      <IconRenderer icon={bookmark.icon} className="w-5 h-5 text-white" />
+                      <a 
+                        href={bookmark.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex-1 text-white hover:text-blue-300 transition-colors truncate"
+                      >
+                        {bookmark.name}
+                      </a>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            handleEditBookmark(bookmark);
+                            setIsFolderModalOpen(false);
+                          }}
+                          className="text-gray-400 hover:text-white transition-colors"
+                          title="Edit"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleDeleteBookmark(bookmark);
+                            setIsFolderModalOpen(false);
+                          }}
+                          className="text-gray-400 hover:text-red-400 transition-colors"
+                          title="Delete"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id).length === 0 && (
+                    <div className="text-center text-gray-400 py-8">
+                      <p>No bookmarks in this folder yet.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
