@@ -246,6 +246,8 @@ export default function DashboardPage() {
   const [editingBookmark, setEditingBookmark] = useState<Item | null>(null);
   const [isEditBookmarkModalOpen, setIsEditBookmarkModalOpen] = useState(false);
   const [deletingBookmark, setDeletingBookmark] = useState<Item | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Item | null>(null);
+  const [isEditCategoryModalOpen, setIsEditCategoryModalOpen] = useState(false);
 
   const fetchItems = useCallback(async () => {
     const res = await fetch('/api/items');
@@ -371,8 +373,8 @@ export default function DashboardPage() {
   };
 
   const handleEditCategory = (category: Item) => {
-    setEditingCategoryId(category.id);
-    setEditedCategoryName(category.name);
+    setEditingCategory(category);
+    setIsEditCategoryModalOpen(true);
   };
 
   const handleDeleteCategory = (category: Item) => {
@@ -388,6 +390,33 @@ export default function DashboardPage() {
   const handleDeleteBookmark = (bookmark: Item) => {
     setDeletingBookmark(bookmark);
     setIsDeleteModalOpen(true);
+  };
+
+  const handleUpdateCategory = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingCategory) return;
+
+    try {
+      const res = await fetch(`/api/categories/${editingCategory.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editingCategory.name,
+          icon: editingCategory.icon,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to update category');
+      }
+
+      setIsEditCategoryModalOpen(false);
+      setEditingCategory(null);
+      fetchItems();
+    } catch (error) {
+      console.error("Error updating category:", error);
+      alert('Failed to update category. Please check the console for details.');
+    }
   };
 
   const handleUpdateCategoryName = async () => {
@@ -700,6 +729,63 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {isEditCategoryModalOpen && editingCategory && (
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+            <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
+              <h2 className="text-xl font-bold mb-4 text-white">Edit Category</h2>
+              <form onSubmit={handleUpdateCategory}>
+                <div className="mb-4">
+                  <label htmlFor="categoryName" className="block text-sm font-medium text-gray-300 mb-1">Name</label>
+                  <input
+                    type="text"
+                    id="categoryName"
+                    value={editingCategory.name}
+                    onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                    required
+                    className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
+                    style={{ backgroundColor: '#36453F' }}
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label htmlFor="categoryIcon" className="block text-sm font-medium text-gray-300 mb-1">Icon</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsIconModalOpen(true)}
+                    className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A] flex items-center gap-2"
+                    style={{ backgroundColor: '#36453F' }}
+                  >
+                    {editingCategory.icon ? (
+                      <>
+                        <IconRenderer icon={editingCategory.icon} className="w-4 h-4 text-white" />
+                        <span>{editingCategory.icon}</span>
+                      </>
+                    ) : (
+                      <span>Select Icon</span>
+                    )}
+                  </button>
+                </div>
+
+                <div className="flex justify-end gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditCategoryModalOpen(false)}
+                    className="px-4 py-2 text-white rounded-lg transition-colors"
+                    style={{ backgroundColor: '#36453F' }}>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-white rounded-lg transition-colors"
+                    style={{ backgroundColor: '#E8000A' }}>
+                    Update
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {isModalOpen && (
           <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
             <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
@@ -833,6 +919,8 @@ export default function DashboardPage() {
           onSelectIcon={(icon) => {
             if (editingBookmark) {
               setEditingBookmark({ ...editingBookmark, icon: icon });
+            } else if (editingCategory) {
+              setEditingCategory({ ...editingCategory, icon: icon });
             } else {
               setSelectedIcon(icon);
             }

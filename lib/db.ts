@@ -40,6 +40,15 @@ export async function getItems(userId: string): Promise<Item[]> {
   return rows;
 }
 
+export async function updateCategory(categoryId: number, name: string, icon: string, userId: string) {
+  await sql`
+    UPDATE items
+    SET name = ${name}, icon = ${icon}
+    WHERE id = ${categoryId} AND type = 'category' AND user_id = ${userId}
+  `;
+}
+
+// Keep backward compatibility
 export async function updateCategoryName(categoryId: number, name: string, userId: string) {
   await sql`
     UPDATE items

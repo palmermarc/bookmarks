@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { updateCategoryName, deleteCategoryAndChildren } from '@/lib/db';
+import { updateCategory, updateCategoryName, deleteCategoryAndChildren } from '@/lib/db';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions);
@@ -13,9 +13,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PUT') {
     try {
-      const { name } = req.body;
+      const { name, icon } = req.body;
       const categoryId = parseInt(id as string, 10);
-      await updateCategoryName(categoryId, name, session.user.email);
+      
+      if (icon) {
+        // Update both name and icon
+        await updateCategory(categoryId, name, icon, session.user.email);
+      } else {
+        // Update only name for backward compatibility
+        await updateCategoryName(categoryId, name, session.user.email);
+      }
+      
       return res.status(200).json({ message: 'Category updated' });
     } catch (error) {
       console.error(error);
