@@ -788,12 +788,16 @@ export default function DashboardPage() {
               {selectedCategory && (
                 <>
                   <div 
-                    className="mb-6 p-4 text-white font-bold text-xl"
+                    className="mb-6 p-4 text-white font-bold text-xl flex items-center gap-3"
                     style={{ 
                       background: 'linear-gradient(to right, #E8000A 33%, transparent 33%)',
                       textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
                     }}
                   >
+                    <IconRenderer 
+                      icon={categories.find(cat => cat.id === selectedCategory)?.icon} 
+                      className="w-6 h-6 text-white" 
+                    />
                     {categories.find(cat => cat.id === selectedCategory)?.name || 'Category'}
                   </div>
                   <div className="mb-4">
@@ -821,13 +825,13 @@ export default function DashboardPage() {
                       </button>
                     )}
                   </div>
-                  <hr className="my-4" />
+                  {folders.filter(item => item.parent_id === selectedCategory).length > 0 && 
+                   bookmarks.filter(item => item.parent_id === selectedCategory).length > 0 && (
+                    <hr className="my-4" />
+                  )}
                   <DndContext collisionDetection={closestCenter} onDragEnd={handleBookmarkDragEnd}>
                     <SortableContext items={bookmarks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-                      {bookmarks.filter(item => {
-                        const parentFolder = folders.find(f => f.id === item.parent_id);
-                        return item.parent_id === selectedCategory || parentFolder?.parent_id === selectedCategory;
-                      }).map(bookmark => (
+                      {bookmarks.filter(item => item.parent_id === selectedCategory).map(bookmark => (
                         <SortableBookmarkItem
                           key={bookmark.id}
                           item={bookmark}
@@ -859,7 +863,7 @@ export default function DashboardPage() {
         </main>
 
         {isEditBookmarkModalOpen && editingBookmark && (
-          <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50">
             <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
               <h2 className="text-xl font-bold mb-4 text-white">Edit Bookmark</h2>
               <form onSubmit={handleUpdateBookmark}>
@@ -939,7 +943,7 @@ export default function DashboardPage() {
         )}
 
         {isEditCategoryModalOpen && editingCategory && (
-          <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50">
             <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
               <h2 className="text-xl font-bold mb-4 text-white">Edit Category</h2>
               <form onSubmit={handleUpdateCategory}>
@@ -996,7 +1000,7 @@ export default function DashboardPage() {
         )}
 
         {isEditFolderModalOpen && editingFolder && (
-          <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50">
             <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
               <h2 className="text-xl font-bold mb-4 text-white">Edit Folder</h2>
               <form onSubmit={handleUpdateFolder}>
@@ -1070,8 +1074,8 @@ export default function DashboardPage() {
         )}
 
         {isFolderModalOpen && selectedFolder && (
-          <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
-            <div className="rounded-lg shadow-2xl w-11/12 max-w-4xl max-h-[80vh] overflow-hidden" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50">
+            <div className="rounded-lg shadow-2xl w-11/12 max-w-[800px] max-h-[80vh] overflow-hidden" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
               <div 
                 className="p-4 text-white font-bold text-xl"
                 style={{ 
@@ -1080,7 +1084,13 @@ export default function DashboardPage() {
                 }}
               >
                 <div className="flex justify-between items-center">
-                  <span>{selectedFolder.name}</span>
+                  <div className="flex items-center gap-3">
+                    <IconRenderer 
+                      icon={selectedFolder.icon} 
+                      className="w-6 h-6 text-white" 
+                    />
+                    <span>{selectedFolder.name}</span>
+                  </div>
                   <button
                     onClick={() => setIsFolderModalOpen(false)}
                     className="text-white hover:text-gray-300 text-2xl leading-none"
@@ -1091,19 +1101,39 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="p-6 max-h-[60vh] overflow-y-auto">
-                <div className="grid gap-3">
+                <div className="mb-4">
+                  <button
+                    onClick={() => {
+                      setIsFolderModalOpen(false);
+                      setItemType('bookmark');
+                      setParentId(selectedFolder.id);
+                      setIsModalOpen(true);
+                    }}
+                    className="w-full py-3 px-4 text-white font-semibold rounded-lg transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                    style={{ 
+                      backgroundColor: '#E8000A',
+                      textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
+                    }}
+                  >
+                    + Add a Bookmark to this folder
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
                   {bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id).map(bookmark => (
-                    <div key={bookmark.id} className="flex items-center gap-3 p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors">
-                      <IconRenderer icon={bookmark.icon} className="w-5 h-5 text-white" />
-                      <a 
-                        href={bookmark.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex-1 text-white hover:text-blue-300 transition-colors truncate"
-                      >
-                        {bookmark.name}
-                      </a>
-                      <div className="flex gap-2">
+                    <div key={bookmark.id} className="flex flex-col gap-2 p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <IconRenderer icon={bookmark.icon} className="w-5 h-5 text-white flex-shrink-0" />
+                        <a 
+                          href={bookmark.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex-1 text-white hover:text-blue-300 transition-colors truncate text-sm"
+                          title={bookmark.name}
+                        >
+                          {bookmark.name}
+                        </a>
+                      </div>
+                      <div className="flex gap-2 justify-end">
                         <button
                           onClick={() => {
                             handleEditBookmark(bookmark);
@@ -1132,7 +1162,7 @@ export default function DashboardPage() {
                     </div>
                   ))}
                   {bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id).length === 0 && (
-                    <div className="text-center text-gray-400 py-8">
+                    <div className="col-span-3 text-center text-gray-400 py-8">
                       <p>No bookmarks in this folder yet.</p>
                     </div>
                   )}
@@ -1143,7 +1173,7 @@ export default function DashboardPage() {
         )}
 
         {isModalOpen && (
-          <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50">
             <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
               <h2 className="text-xl font-bold mb-4 text-white">Create New</h2>
               <form onSubmit={handleFormSubmit}>
@@ -1229,7 +1259,14 @@ export default function DashboardPage() {
                 <div className="flex justify-end gap-4">
                   <button
                     type="button"
-                    onClick={() => setIsModalOpen(false)}
+                    onClick={() => {
+                      setName('');
+                      setItemType('bookmark');
+                      setParentId(null);
+                      setSelectedIcon('');
+                      setUrl('');
+                      setIsModalOpen(false);
+                    }}
                     className="px-4 py-2 text-white rounded-lg transition-colors"
                     style={{ backgroundColor: '#36453F' }}>
                     Cancel
@@ -1247,7 +1284,7 @@ export default function DashboardPage() {
         )}
 
         {isDeleteModalOpen && (deletingCategory || deletingBookmark || deletingFolder) && (
-          <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50">
             <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
               <h2 className="text-xl font-bold mb-4 text-white">Delete {deletingCategory ? 'Category' : deletingFolder ? 'Folder' : 'Bookmark'}</h2>
               <p className="text-white mb-4">Are you sure you want to delete the {deletingCategory ? 'category' : deletingFolder ? 'folder' : 'bookmark'} &quot;{deletingCategory?.name || deletingFolder?.name || deletingBookmark?.name}&quot;? {deletingCategory && 'This will remove all folders and bookmarks within this category.'} {deletingFolder && 'This will remove all bookmarks within this folder.'}</p>
