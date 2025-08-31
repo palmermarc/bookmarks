@@ -1275,7 +1275,7 @@ export default function DashboardPage() {
         )}
 
         {isFolderModalOpen && selectedFolder && (
-          <div className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-5 flex items-center justify-center z-50">
             <div className="rounded-lg shadow-2xl w-11/12 max-w-[800px] max-h-[80vh] overflow-hidden" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
               <div 
                 className="p-4 text-white font-bold text-xl"
