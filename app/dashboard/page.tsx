@@ -49,14 +49,23 @@ function SortableBookmarkItem(props: {
       ) : (
         <>
           <IconRenderer icon={item.icon} className="w-4 h-4 text-white flex-shrink-0" />
-          <a 
-            href={item.url} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="flex-1 text-white hover:text-blue-300 transition-colors"
-          >
-            {item.name}
-          </a>
+          {reorderMode ? (
+            <span 
+              className="flex-1 text-white cursor-move"
+              title={item.name}
+            >
+              {item.name}
+            </span>
+          ) : (
+            <a 
+              href={item.url} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="flex-1 text-white hover:text-blue-300 transition-colors"
+            >
+              {item.name}
+            </a>
+          )}
           <div className="flex gap-1 flex-shrink-0">
             <button
               onClick={(e) => {
@@ -898,19 +907,23 @@ export default function DashboardPage() {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
+    // Get only the bookmarks in this folder
     const folderBookmarks = bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id);
     const oldIndex = folderBookmarks.findIndex((item) => item.id === active.id);
     const newIndex = folderBookmarks.findIndex((item) => item.id === over.id);
     
     if (oldIndex !== -1 && newIndex !== -1) {
-      const newOrder = arrayMove(folderBookmarks, oldIndex, newIndex);
+      // Reorder the folder bookmarks
+      const reorderedFolderBookmarks = arrayMove(folderBookmarks, oldIndex, newIndex);
+      
+      // Update the main bookmarks array with the reordered folder bookmarks
       const updatedBookmarks = bookmarks.map(bookmark => {
         if (bookmark.parent_id === selectedFolder.id) {
-          const newOrderItem = newOrder.find(item => item.id === bookmark.id);
-          return newOrderItem || bookmark;
+          return reorderedFolderBookmarks.find(item => item.id === bookmark.id) || bookmark;
         }
         return bookmark;
       });
+      
       setBookmarks(updatedBookmarks);
     }
   };
