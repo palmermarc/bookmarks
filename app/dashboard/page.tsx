@@ -528,6 +528,25 @@ export default function DashboardPage() {
     }
   }, [status, router, fetchItems]);
 
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (isModalOpen) setIsModalOpen(false);
+        if (isEditBookmarkModalOpen) setIsEditBookmarkModalOpen(false);
+        if (isEditCategoryModalOpen) setIsEditCategoryModalOpen(false);
+        if (isEditFolderModalOpen) setIsEditFolderModalOpen(false);
+        if (isFolderModalOpen) setIsFolderModalOpen(false);
+        if (isDeleteModalOpen) setIsDeleteModalOpen(false);
+        if (isIconModalOpen) setIsIconModalOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isModalOpen, isEditBookmarkModalOpen, isEditCategoryModalOpen, isEditFolderModalOpen, isFolderModalOpen, isDeleteModalOpen, isIconModalOpen]);
+
   if (status === 'loading') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">
@@ -1103,8 +1122,15 @@ export default function DashboardPage() {
         </main>
 
         {isEditBookmarkModalOpen && editingBookmark && (
-          <div className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50">
-            <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
+          <div 
+            className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50"
+            onClick={() => setIsEditBookmarkModalOpen(false)}
+          >
+            <div 
+              className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" 
+              style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <h2 className="text-xl font-bold mb-4 text-white">Edit Bookmark</h2>
               <form onSubmit={handleUpdateBookmark}>
                 <div className="mb-4">
@@ -1183,8 +1209,15 @@ export default function DashboardPage() {
         )}
 
         {isEditCategoryModalOpen && editingCategory && (
-          <div className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50">
-            <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
+          <div 
+            className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50"
+            onClick={() => setIsEditCategoryModalOpen(false)}
+          >
+            <div 
+              className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" 
+              style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <h2 className="text-xl font-bold mb-4 text-white">Edit Category</h2>
               <form onSubmit={handleUpdateCategory}>
                 <div className="mb-4">
@@ -1240,8 +1273,15 @@ export default function DashboardPage() {
         )}
 
         {isEditFolderModalOpen && editingFolder && (
-          <div className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50">
-            <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
+          <div 
+            className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50"
+            onClick={() => setIsEditFolderModalOpen(false)}
+          >
+            <div 
+              className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" 
+              style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <h2 className="text-xl font-bold mb-4 text-white">Edit Folder</h2>
               <form onSubmit={handleUpdateFolder}>
                 <div className="mb-4">
@@ -1314,8 +1354,15 @@ export default function DashboardPage() {
         )}
 
         {isFolderModalOpen && selectedFolder && (
-          <div className="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-50">
-            <div className="rounded-lg shadow-2xl w-11/12 max-w-[800px] max-h-[80vh] overflow-hidden" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
+          <div 
+            className="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-50"
+            onClick={() => setIsFolderModalOpen(false)}
+          >
+            <div 
+              className="rounded-lg shadow-2xl w-11/12 max-w-[800px] max-h-[80vh] overflow-hidden" 
+              style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <div 
                 className="p-4 text-white font-bold text-xl"
                 style={{ 
@@ -1414,8 +1461,15 @@ export default function DashboardPage() {
         )}
 
         {isModalOpen && (
-          <div className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50">
-            <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
+          <div 
+            className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50"
+            onClick={() => setIsModalOpen(false)}
+          >
+            <div 
+              className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" 
+              style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <h2 className="text-xl font-bold mb-4 text-white">Create New</h2>
               <form onSubmit={handleFormSubmit}>
                 <div className="mb-4">
@@ -1525,8 +1579,15 @@ export default function DashboardPage() {
         )}
 
         {isDeleteModalOpen && (deletingCategory || deletingBookmark || deletingFolder) && (
-          <div className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50">
-            <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
+          <div 
+            className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50"
+            onClick={() => setIsDeleteModalOpen(false)}
+          >
+            <div 
+              className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" 
+              style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <h2 className="text-xl font-bold mb-4 text-white">Delete {deletingCategory ? 'Category' : deletingFolder ? 'Folder' : 'Bookmark'}</h2>
               <p className="text-white mb-4">Are you sure you want to delete the {deletingCategory ? 'category' : deletingFolder ? 'folder' : 'bookmark'} &quot;{deletingCategory?.name || deletingFolder?.name || deletingBookmark?.name}&quot;? {deletingCategory && 'This will remove all folders and bookmarks within this category.'} {deletingFolder && 'This will remove all bookmarks within this folder.'}</p>
               <div className="flex justify-end gap-4">
