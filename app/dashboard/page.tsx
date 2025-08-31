@@ -69,7 +69,13 @@ function SortableItem(props: {
   return (
     <li ref={setNodeRef} style={style} {...attributes} {...dndListeners} 
         className={`p-2 rounded cursor-pointer flex justify-between items-center ${selectedCategory === item.id ? 'bg-gray-700' : ''}`}
-        onClick={() => setSelectedCategory(item.id)}>
+        onClick={() => setSelectedCategory(item.id)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setSelectedCategory(item.id);
+          setIsMenuOpen(true);
+        }}>
       {isEditing ? (
         <input 
           type="text" 
