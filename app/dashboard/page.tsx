@@ -236,8 +236,8 @@ export default function DashboardPage() {
   const [editedCategoryName, setEditedCategoryName] = useState('');
   const [reorderMode, setReorderMode] = useState(false);
   const [reorderBookmarksMode, setReorderBookmarksMode] = useState(false);
-  const [editingBookmarkId, setEditingBookmarkId] = useState<number | null>(null);
-  const [editedBookmarkName, setEditedBookmarkName] = useState('');
+  const [editingBookmark, setEditingBookmark] = useState<Item | null>(null);
+  const [isEditBookmarkModalOpen, setIsEditBookmarkModalOpen] = useState(false);
   const [deletingBookmark, setDeletingBookmark] = useState<Item | null>(null);
 
   const fetchItems = useCallback(async () => {
@@ -374,8 +374,8 @@ export default function DashboardPage() {
   };
 
   const handleEditBookmark = (bookmark: Item) => {
-    setEditingBookmarkId(bookmark.id);
-    setEditedBookmarkName(bookmark.name);
+    setEditingBookmark(bookmark);
+    setIsEditBookmarkModalOpen(true);
   };
 
   const handleDeleteBookmark = (bookmark: Item) => {
@@ -405,21 +405,28 @@ export default function DashboardPage() {
     }
   };
 
-  const handleUpdateBookmarkName = async () => {
-    if (!editingBookmarkId) return;
+  const handleUpdateBookmark = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingBookmark) return;
 
     try {
-      const res = await fetch(`/api/items/${editingBookmarkId}`, {
+      const res = await fetch(`/api/items/${editingBookmark.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editedBookmarkName }),
+        body: JSON.stringify({
+          name: editingBookmark.name,
+          parent_id: editingBookmark.parent_id,
+          icon: editingBookmark.icon,
+          url: editingBookmark.url,
+        }),
       });
 
       if (!res.ok) {
         throw new Error('Failed to update bookmark');
       }
 
-      setEditingBookmarkId(null);
+      setIsEditBookmarkModalOpen(false);
+      setEditingBookmark(null);
       fetchItems();
     } catch (error) {
       console.error("Error updating bookmark:", error);
@@ -582,11 +589,11 @@ export default function DashboardPage() {
                           onEdit={handleEditBookmark}
                           onDelete={handleDeleteBookmark}
                           onReorder={() => setReorderBookmarksMode(true)}
-                          isEditing={editingBookmarkId === bookmark.id}
-                          editedName={editedBookmarkName}
-                          onNameChange={(e) => setEditedBookmarkName(e.target.value)}
-                          onNameBlur={handleUpdateBookmarkName}
-                          onNameKeyDown={(e) => e.key === 'Enter' && handleUpdateBookmarkName()}
+                          isEditing={editingBookmark?.id === bookmark.id}
+                          editedName={editingBookmark?.name || ''}
+                          onNameChange={(e) => setEditingBookmark(b => b && ({ ...b, name: e.target.value }))}
+                          onNameBlur={() => {}}
+                          onNameKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                           reorderMode={reorderBookmarksMode}
                         />
                       ))}
@@ -595,7 +602,7 @@ export default function DashboardPage() {
                   {reorderBookmarksMode && (
                     <button 
                       onClick={handleSaveBookmarkReorder}
-                      className="w-full mt-4 px-4 py-2 text-white rounded-lg transition-colors" 
+                      className="w-full mt-4 px-4 py-2 text-white rounded-lg transition-colors max-2-wxs:w-full" 
                       style={{ backgroundColor: '#E8000A' }}>
                       Save Order
                     </button>
@@ -605,6 +612,86 @@ export default function DashboardPage() {
             </div>
           </div>
         </main>
+
+        {isEditBookmarkModalOpen && editingBookmark && (
+          <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+            <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
+              <h2 className="text-xl font-bold mb-4 text-white">Edit Bookmark</h2>
+              <form onSubmit={handleUpdateBookmark}>
+                <div className="mb-4">
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">Name</label>
+                  <input
+                    type="text"
+                    id="name"
+                    value={editingBookmark.name}
+                    onChange={(e) => setEditingBookmark({ ...editingBookmark, name: e.target.value })}
+                    required
+                    className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
+                    style={{ backgroundColor: '#36453F' }}
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label htmlFor="parentId" className="block text-sm font-medium text-gray-300 mb-1">Category/Folder</label>
+                  <select
+                    id="parentId"
+                    value={editingBookmark.parent_id || ''}
+                    onChange={(e) => setEditingBookmark({ ...editingBookmark, parent_id: Number(e.target.value) })}
+                    required
+                    className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
+                    style={{ backgroundColor: '#36453F' }}
+                  >
+                    <option value="">Select Parent</option>
+                    {[...categories, ...folders].map(item => (
+                      <option key={item.id} value={item.id}>{item.name} ({item.type})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mb-4">
+                  <label htmlFor="url" className="block text-sm font-medium text-gray-300 mb-1">URL</label>
+                  <input
+                    type="url"
+                    id="url"
+                    value={editingBookmark.url || ''}
+                    onChange={(e) => setEditingBookmark({ ...editingBookmark, url: e.target.value })}
+                    required
+                    className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
+                    style={{ backgroundColor: '#36453F' }}
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label htmlFor="icon" className="block text-sm font-medium text-gray-300 mb-1">Icon</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsIconModalOpen(true)}
+                    className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
+                    style={{ backgroundColor: '#36453F' }}
+                  >
+                    {editingBookmark.icon ? editingBookmark.icon : 'Select Icon'}
+                  </button>
+                </div>
+
+                <div className="flex justify-end gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditBookmarkModalOpen(false)}
+                    className="px-4 py-2 text-white rounded-lg transition-colors"
+                    style={{ backgroundColor: '#36453F' }}>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-white rounded-lg transition-colors"
+                    style={{ backgroundColor: '#E8000A' }}>
+                    Update
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {isModalOpen && (
           <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
@@ -737,7 +824,11 @@ export default function DashboardPage() {
           isOpen={isIconModalOpen}
           onClose={() => setIsIconModalOpen(false)}
           onSelectIcon={(icon) => {
-            setSelectedIcon(icon);
+            if (editingBookmark) {
+              setEditingBookmark({ ...editingBookmark, icon: icon });
+            } else {
+              setSelectedIcon(icon);
+            }
             setIsIconModalOpen(false);
           }}
         />
