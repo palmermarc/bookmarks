@@ -25,8 +25,6 @@ function SortableBookmarkItem(props: {
 }) {
   const { item, onEdit, onDelete, onReorder, isEditing, editedName, onNameChange, onNameBlur, onNameKeyDown, reorderMode } = props;
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [menuPosition, setMenuPosition] = useState<{ top: number, left: number } | null>(null);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -37,13 +35,7 @@ function SortableBookmarkItem(props: {
 
   return (
     <li ref={setNodeRef} style={style} {...attributes} {...dndListeners} 
-        className={`p-2 rounded cursor-pointer flex justify-between items-center`}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setMenuPosition({ top: e.clientY, left: e.clientX });
-          setIsMenuOpen(true);
-        }}>
+        className={`p-2 rounded cursor-pointer flex items-center gap-2`}>
       {isEditing ? (
         <input 
           type="text" 
@@ -51,27 +43,62 @@ function SortableBookmarkItem(props: {
           onChange={onNameChange}
           onBlur={onNameBlur}
           onKeyDown={onNameKeyDown}
-          className="bg-gray-700 text-white w-full"
+          className="bg-gray-700 text-white flex-1"
           autoFocus
         />
       ) : (
-        <a href={item.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-          <IconRenderer icon={item.icon} className="w-4 h-4 text-white" />
-          <span>{item.name}</span>
-        </a>
-      )}
-      {isMenuOpen && (
-        <BookmarkMenu 
-          bookmark={item} 
-          onEdit={onEdit} 
-          onDelete={onDelete} 
-          onReorder={onReorder}
-          onClose={() => {
-            setIsMenuOpen(false);
-            setMenuPosition(null);
-          }}
-          position={menuPosition}
-        />
+        <>
+          <IconRenderer icon={item.icon} className="w-4 h-4 text-white flex-shrink-0" />
+          <a 
+            href={item.url} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="flex-1 text-white hover:text-blue-300 transition-colors"
+          >
+            {item.name}
+          </a>
+          <div className="flex gap-1 flex-shrink-0">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onReorder();
+              }}
+              className="text-gray-400 hover:text-white transition-colors"
+              title="Reorder"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onEdit(item);
+              }}
+              className="text-gray-400 hover:text-white transition-colors"
+              title="Edit"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDelete(item);
+              }}
+              className="text-gray-400 hover:text-red-400 transition-colors"
+              title="Delete"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </>
       )}
     </li>
   );
@@ -155,7 +182,6 @@ function SortableFolder(props: {
 }) {
   const { item, onEdit, onDelete, onReorder, onClick, reorderMode } = props;
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -169,17 +195,19 @@ function SortableFolder(props: {
       ref={setNodeRef}
       {...attributes}
       {...dndListeners}
-      className="inline-block cursor-pointer relative"
+      className="inline-block cursor-pointer relative group"
       style={{
         ...style,
         margin: '10px 20px',
         width: '100px',
       }}
-      onClick={() => onClick(item)}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsMenuOpen(true);
+      onClick={(e) => {
+        // Prevent click when clicking on action buttons
+        if ((e.target as HTMLElement).closest('button')) {
+          e.stopPropagation();
+          return;
+        }
+        onClick(item);
       }}
     >
       <div className="flex flex-col items-center text-white">
@@ -189,16 +217,48 @@ function SortableFolder(props: {
         <div className="text-center text-sm break-words" style={{ width: '100px' }}>
           {item.name}
         </div>
+        <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onReorder();
+            }}
+            className="text-gray-400 hover:text-white transition-colors"
+            title="Reorder"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onEdit(item);
+            }}
+            className="text-gray-400 hover:text-white transition-colors"
+            title="Edit"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDelete(item);
+            }}
+            className="text-gray-400 hover:text-red-400 transition-colors"
+            title="Delete"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
       </div>
-      {isMenuOpen && (
-        <FolderMenu
-          folder={item}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          onReorder={onReorder}
-          onClose={() => setIsMenuOpen(false)}
-        />
-      )}
     </div>
   );
 }
@@ -250,7 +310,6 @@ function SortableItem(props: {
 }) {
   const { item, selectedCategory, setSelectedCategory, onEdit, onDelete, onReorder, isEditing, editedName, onNameChange, onNameBlur, onNameKeyDown, reorderMode } = props;
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -261,13 +320,14 @@ function SortableItem(props: {
 
   return (
     <li ref={setNodeRef} style={style} {...attributes} {...dndListeners} 
-        className={`p-2 rounded cursor-pointer flex justify-between items-center ${selectedCategory === item.id ? 'bg-gray-700' : ''}`}
-        onClick={() => setSelectedCategory(item.id)}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
+        className={`p-2 rounded cursor-pointer flex items-center gap-2 ${selectedCategory === item.id ? 'bg-gray-700' : ''}`}
+        onClick={(e) => {
+          // Prevent click when clicking on action buttons
+          if ((e.target as HTMLElement).closest('button')) {
+            e.stopPropagation();
+            return;
+          }
           setSelectedCategory(item.id);
-          setIsMenuOpen(true);
         }}>
       {isEditing ? (
         <input 
@@ -276,23 +336,52 @@ function SortableItem(props: {
           onChange={onNameChange}
           onBlur={onNameBlur}
           onKeyDown={onNameKeyDown}
-          className="bg-gray-700 text-white w-full"
+          className="bg-gray-700 text-white flex-1"
           autoFocus
         />
       ) : (
-        <div className="flex items-center gap-2">
-          <IconRenderer icon={item.icon} className="w-4 h-4 text-white" />
-          <span>{item.name}</span>
-        </div>
-      )}
-      {isMenuOpen && (
-        <CategoryMenu 
-          category={item} 
-          onEdit={onEdit} 
-          onDelete={onDelete} 
-          onReorder={onReorder}
-          onClose={() => setIsMenuOpen(false)}
-        />
+        <>
+          <IconRenderer icon={item.icon} className="w-4 h-4 text-white flex-shrink-0" />
+          <span className="flex-1">{item.name}</span>
+          <div className="flex gap-1 flex-shrink-0">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onReorder();
+              }}
+              className="text-gray-400 hover:text-white transition-colors"
+              title="Reorder"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(item);
+              }}
+              className="text-gray-400 hover:text-white transition-colors"
+              title="Edit"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(item);
+              }}
+              className="text-gray-400 hover:text-red-400 transition-colors"
+              title="Delete"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </>
       )}
     </li>
   );
