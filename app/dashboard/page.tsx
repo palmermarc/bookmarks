@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import IconSelectorModal from '@/app/components/IconSelectorModal'
 import { Item } from '@/lib/definitions';
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
@@ -112,7 +112,6 @@ export default function DashboardPage() {
   const [parentId, setParentId] = useState<number | null>(null);
   const [selectedIcon, setSelectedIcon] = useState('');
   const [isIconModalOpen, setIsIconModalOpen] = useState(false);
-  const [items, setItems] = useState<Item[]>([]);
   const [url, setUrl] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [categories, setCategories] = useState<Item[]>([]);
@@ -124,21 +123,10 @@ export default function DashboardPage() {
   const [editedCategoryName, setEditedCategoryName] = useState('');
   const [reorderMode, setReorderMode] = useState(false);
   
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/')
-    }
-    if (status === 'authenticated') {
-      fetchItems();
-    }
-  }, [status, router]);
-
-  const fetchItems = async () => {
+  const fetchItems = useCallback(async () => {
     const res = await fetch('/api/items');
     if (res.ok) {
       const data = await res.json();
-      setItems(data);
       const cats = data.filter((item: Item) => item.type === 'category');
       setCategories(cats);
       setFolders(data.filter((item: Item) => item.type === 'folder'));
@@ -147,7 +135,16 @@ export default function DashboardPage() {
         setSelectedCategory(cats[0].id);
       }
     }
-  };
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/')
+    }
+    if (status === 'authenticated') {
+      fetchItems();
+    }
+  }, [status, router, fetchItems]);
 
   if (status === 'loading') {
     return (
@@ -183,7 +180,7 @@ export default function DashboardPage() {
             body: JSON.stringify(newCategory),
           });
           if (!res.ok) throw new Error('Failed to create default category');
-          alert('We created a default category named \'General\'. Please select it and submit again.');
+          alert('We created a default category named &quot;General&quot;. Please select it and submit again.');
           fetchItems();
           setIsModalOpen(false);
           return;
@@ -494,7 +491,7 @@ export default function DashboardPage() {
           <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
             <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
               <h2 className="text-xl font-bold mb-4 text-white">Delete Category</h2>
-              <p className="text-white mb-4">Are you sure you want to delete the category "{deletingCategory.name}"? This will remove all folders and bookmarks within this category.</p>
+              <p className="text-white mb-4">Are you sure you want to delete the category &quot;{deletingCategory.name}&quot;? This will remove all folders and bookmarks within this category.</p>
               <div className="flex justify-end gap-4">
                 <button
                   onClick={() => setIsDeleteModalOpen(false)}
