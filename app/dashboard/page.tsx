@@ -1054,21 +1054,23 @@ export default function DashboardPage() {
                   )}
                   <DndContext collisionDetection={closestCenter} onDragEnd={handleBookmarkDragEnd}>
                     <SortableContext items={bookmarks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-                      {bookmarks.filter(item => item.parent_id === selectedCategory).map(bookmark => (
-                        <SortableBookmarkItem
-                          key={bookmark.id}
-                          item={bookmark}
-                          onEdit={handleEditBookmark}
-                          onDelete={handleDeleteBookmark}
-                          onReorder={() => setReorderBookmarksMode(true)}
-                          isEditing={editingBookmark?.id === bookmark.id}
-                          editedName={editingBookmark?.name || ''}
-                          onNameChange={(e) => setEditingBookmark(b => b && ({ ...b, name: e.target.value }))}
-                          onNameBlur={() => {}}
-                          onNameKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-                          reorderMode={reorderBookmarksMode}
-                        />
-                      ))}
+                      <div className={`grid gap-3 ${reorderBookmarksMode ? 'grid-cols-1' : 'grid-cols-5'}`}>
+                        {bookmarks.filter(item => item.parent_id === selectedCategory).map(bookmark => (
+                          <SortableBookmarkItem
+                            key={bookmark.id}
+                            item={bookmark}
+                            onEdit={handleEditBookmark}
+                            onDelete={handleDeleteBookmark}
+                            onReorder={() => setReorderBookmarksMode(true)}
+                            isEditing={editingBookmark?.id === bookmark.id}
+                            editedName={editingBookmark?.name || ''}
+                            onNameChange={(e) => setEditingBookmark(b => b && ({ ...b, name: e.target.value }))}
+                            onNameBlur={() => {}}
+                            onNameKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                            reorderMode={reorderBookmarksMode}
+                          />
+                        ))}
+                      </div>
                     </SortableContext>
                   </DndContext>
                   {reorderBookmarksMode && (
