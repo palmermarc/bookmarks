@@ -294,6 +294,73 @@ function FolderMenu(props: {
   );
 }
 
+function SortableFolderBookmarkItem(props: {
+  item: Item,
+  onEdit: (item: Item) => void,
+  onDelete: (item: Item) => void,
+  onCloseFolderModal: () => void,
+  reorderMode: boolean,
+}) {
+  const { item, onEdit, onDelete, onCloseFolderModal, reorderMode } = props;
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const dndListeners = reorderMode ? listeners : {};
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      {...attributes} 
+      {...dndListeners}
+      className="p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+    >
+      <div className="flex items-center gap-2">
+        <IconRenderer icon={item.icon} className="w-5 h-5 text-white flex-shrink-0" />
+        <a 
+          href={item.url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="flex-1 text-white hover:text-blue-300 transition-colors truncate text-sm"
+          title={item.name}
+        >
+          {item.name}
+        </a>
+        <div className="flex gap-1 flex-shrink-0">
+          <button
+            onClick={() => {
+              onEdit(item);
+              onCloseFolderModal();
+            }}
+            className="text-gray-400 hover:text-white transition-colors"
+            title="Edit"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => {
+              onDelete(item);
+              onCloseFolderModal();
+            }}
+            className="text-gray-400 hover:text-red-400 transition-colors"
+            title="Delete"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SortableItem(props: { 
   item: Item, 
   selectedCategory: number | null, 
@@ -418,6 +485,7 @@ export default function DashboardPage() {
   const [reorderFoldersMode, setReorderFoldersMode] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<Item | null>(null);
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const [reorderFolderBookmarksMode, setReorderFolderBookmarksMode] = useState(false);
 
   const fetchItems = useCallback(async () => {
     const res = await fetch('/api/items');
@@ -815,6 +883,51 @@ export default function DashboardPage() {
     }
   };
 
+  const handleFolderBookmarkDragEnd = async (event: DragEndEvent) => {
+    if (!reorderFolderBookmarksMode || !selectedFolder) return;
+    
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const folderBookmarks = bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id);
+    const oldIndex = folderBookmarks.findIndex((item) => item.id === active.id);
+    const newIndex = folderBookmarks.findIndex((item) => item.id === over.id);
+    
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const newOrder = arrayMove(folderBookmarks, oldIndex, newIndex);
+      const updatedBookmarks = bookmarks.map(bookmark => {
+        if (bookmark.parent_id === selectedFolder.id) {
+          const newOrderItem = newOrder.find(item => item.id === bookmark.id);
+          return newOrderItem || bookmark;
+        }
+        return bookmark;
+      });
+      setBookmarks(updatedBookmarks);
+    }
+  };
+
+  const handleSaveFolderBookmarkReorder = async () => {
+    if (!selectedFolder) return;
+    
+    try {
+      const folderBookmarks = bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id);
+      const res = await fetch('/api/items/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: folderBookmarks }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to reorder folder bookmarks');
+      }
+      setReorderFolderBookmarksMode(false);
+    } catch (error) {
+      console.error("Error reordering folder bookmarks:", error);
+      alert('Failed to reorder folder bookmarks. Please check the console for details.');
+      fetchItems();
+    }
+  };
+
   return (
     <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <div className="flex flex-col min-h-screen" style={{ backgroundColor: '#36453F' }}>
@@ -1179,61 +1292,60 @@ export default function DashboardPage() {
                     />
                     <span>{selectedFolder.name}</span>
                   </div>
-                  <button
-                    onClick={() => setIsFolderModalOpen(false)}
-                    className="text-white hover:text-gray-300 text-2xl leading-none"
-                    style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)' }}
-                  >
-                    ×
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id).length > 1 && (
+                      <button
+                        onClick={() => setReorderFolderBookmarksMode(!reorderFolderBookmarksMode)}
+                        className={`text-white hover:text-gray-300 transition-colors ${reorderFolderBookmarksMode ? 'text-[#E8000A]' : ''}`}
+                        style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)' }}
+                        title={reorderFolderBookmarksMode ? 'Exit Reorder Mode' : 'Reorder Bookmarks'}
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setIsFolderModalOpen(false)}
+                      className="text-white hover:text-gray-300 text-2xl leading-none"
+                      style={{ textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)' }}
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="p-6 max-h-[60vh] overflow-y-auto">
                 {bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id).length > 0 ? (
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    {bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id).map(bookmark => (
-                      <div key={bookmark.id} className="p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors">
-                        <div className="flex items-center gap-2">
-                          <IconRenderer icon={bookmark.icon} className="w-5 h-5 text-white flex-shrink-0" />
-                          <a 
-                            href={bookmark.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex-1 text-white hover:text-blue-300 transition-colors truncate text-sm"
-                            title={bookmark.name}
-                          >
-                            {bookmark.name}
-                          </a>
-                          <div className="flex gap-1 flex-shrink-0">
-                            <button
-                              onClick={() => {
-                                handleEditBookmark(bookmark);
-                                setIsFolderModalOpen(false);
-                              }}
-                              className="text-gray-400 hover:text-white transition-colors"
-                              title="Edit"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => {
-                                handleDeleteBookmark(bookmark);
-                                setIsFolderModalOpen(false);
-                              }}
-                              className="text-gray-400 hover:text-red-400 transition-colors"
-                              title="Delete"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
+                  <>
+                    <DndContext collisionDetection={closestCenter} onDragEnd={handleFolderBookmarkDragEnd}>
+                      <SortableContext items={bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id).map(b => b.id)} strategy={verticalListSortingStrategy}>
+                        <div className="grid grid-cols-3 gap-3 mb-4">
+                          {bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id).map(bookmark => (
+                            <SortableFolderBookmarkItem
+                              key={bookmark.id}
+                              item={bookmark}
+                              onEdit={handleEditBookmark}
+                              onDelete={handleDeleteBookmark}
+                              onCloseFolderModal={() => setIsFolderModalOpen(false)}
+                              reorderMode={reorderFolderBookmarksMode}
+                            />
+                          ))}
                         </div>
+                      </SortableContext>
+                    </DndContext>
+                    {reorderFolderBookmarksMode && (
+                      <div className="flex justify-center mb-4">
+                        <button
+                          onClick={handleSaveFolderBookmarkReorder}
+                          className="px-4 py-2 text-white rounded-lg transition-colors"
+                          style={{ backgroundColor: '#E8000A' }}
+                        >
+                          Save Order
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 ) : (
                   <div className="text-center text-gray-400 py-8 mb-4">
                     <p>No bookmarks in this folder yet.</p>
