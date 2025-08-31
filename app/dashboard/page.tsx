@@ -321,15 +321,24 @@ function SortableFolderBookmarkItem(props: {
     >
       <div className="flex items-center gap-2">
         <IconRenderer icon={item.icon} className="w-5 h-5 text-white flex-shrink-0" />
-        <a 
-          href={item.url} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="flex-1 text-white hover:text-blue-300 transition-colors truncate text-sm"
-          title={item.name}
-        >
-          {item.name}
-        </a>
+        {reorderMode ? (
+          <span 
+            className="flex-1 text-white truncate text-sm cursor-move"
+            title={item.name}
+          >
+            {item.name}
+          </span>
+        ) : (
+          <a 
+            href={item.url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex-1 text-white hover:text-blue-300 transition-colors truncate text-sm"
+            title={item.name}
+          >
+            {item.name}
+          </a>
+        )}
         <div className="flex gap-1 flex-shrink-0">
           <button
             onClick={() => {
