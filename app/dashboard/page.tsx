@@ -1320,7 +1320,7 @@ export default function DashboardPage() {
                   <>
                     <DndContext collisionDetection={closestCenter} onDragEnd={handleFolderBookmarkDragEnd}>
                       <SortableContext items={bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id).map(b => b.id)} strategy={verticalListSortingStrategy}>
-                        <div className="grid grid-cols-3 gap-3 mb-4">
+                        <div className={`grid gap-3 mb-4 ${reorderFolderBookmarksMode ? 'grid-cols-1' : 'grid-cols-3'}`}>
                           {bookmarks.filter(bookmark => bookmark.parent_id === selectedFolder.id).map(bookmark => (
                             <SortableFolderBookmarkItem
                               key={bookmark.id}
