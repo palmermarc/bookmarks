@@ -10,18 +10,6 @@ import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-'use client'
-
-import Image from 'next/image'
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState, useRef, useCallback } from 'react'
-import IconSelectorModal from '@/app/components/IconSelectorModal'
-import { Item } from '@/lib/definitions';
-import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-
 function SortableBookmarkItem(props: { 
   item: Item, 
   onEdit: (item: Item) => void,
