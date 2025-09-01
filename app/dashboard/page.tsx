@@ -22,8 +22,10 @@ function SortableBookmarkItem(props: {
   onNameBlur: () => void,
   onNameKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void,
   reorderMode: boolean,
+  dragDropMode?: boolean,
+  categories?: Item[],
 }) {
-  const { item, onEdit, onDelete, onReorder, isEditing, editedName, onNameChange, onNameBlur, onNameKeyDown, reorderMode } = props;
+  const { item, onEdit, onDelete, onReorder, isEditing, editedName, onNameChange, onNameBlur, onNameKeyDown, reorderMode, dragDropMode = false, categories = [] } = props;
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
 
   const style = {
@@ -31,11 +33,19 @@ function SortableBookmarkItem(props: {
     transition,
   };
 
-  const dndListeners = reorderMode ? listeners : {};
+  // Check if this bookmark can be dragged (only if it has a category as parent)
+  const isBookmarkInCategory = categories.some(cat => cat.id === item.parent_id);
+  const canDrag = dragDropMode && isBookmarkInCategory;
+  
+  const dndListeners = (reorderMode || canDrag) ? listeners : {};
 
   return (
     <li ref={setNodeRef} style={style} {...attributes} {...dndListeners} 
-        className={`p-2 rounded cursor-pointer flex items-center gap-2`}>
+        className={`p-2 rounded flex items-center gap-2 ${
+          canDrag ? 'cursor-grab border-2 border-dashed border-yellow-400 bg-yellow-50 bg-opacity-10' : 
+          reorderMode ? 'cursor-move' : 
+          'cursor-pointer'
+        }`}>
       {isEditing ? (
         <input 
           type="text" 
@@ -125,8 +135,9 @@ function SortableFolder(props: {
   onReorder: () => void,
   onClick: (item: Item) => void,
   reorderMode: boolean,
+  dragDropMode?: boolean,
 }) {
-  const { item, onEdit, onDelete, onReorder, onClick, reorderMode } = props;
+  const { item, onEdit, onDelete, onReorder, onClick, reorderMode, dragDropMode = false } = props;
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
 
   const style = {
@@ -134,14 +145,19 @@ function SortableFolder(props: {
     transition,
   };
 
-  const dndListeners = reorderMode ? listeners : {};
+  // In drag drop mode, folders shouldn't be draggable but can be drop targets
+  const dndListeners = (reorderMode && !dragDropMode) ? listeners : {};
 
   return (
     <div
       ref={setNodeRef}
       {...attributes}
       {...dndListeners}
-      className="inline-block cursor-pointer relative group"
+      className={`inline-block relative group ${
+        dragDropMode ? 'cursor-pointer border-2 border-dashed border-green-400 bg-green-50 bg-opacity-10 rounded-lg p-2' : 
+        reorderMode ? 'cursor-move' : 
+        'cursor-pointer'
+      }`}
       style={{
         ...style,
         margin: '10px 20px',
@@ -416,6 +432,7 @@ export default function DashboardPage() {
   const [importHtml, setImportHtml] = useState('');
   const [importCategory, setImportCategory] = useState<number | null>(null);
   const [parsedImportData, setParsedImportData] = useState<{ folders: ImportItem[], bookmarks: ImportItem[] } | null>(null);
+  const [dragDropMode, setDragDropMode] = useState(false);
 
   interface ImportItem {
     id: string;
@@ -460,6 +477,7 @@ export default function DashboardPage() {
         if (isDeleteModalOpen) setIsDeleteModalOpen(false);
         if (isIconModalOpen) setIsIconModalOpen(false);
         if (isImportModalOpen) setIsImportModalOpen(false);
+        if (dragDropMode) setDragDropMode(false);
       }
     };
 
@@ -467,7 +485,7 @@ export default function DashboardPage() {
     return () => {
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [isModalOpen, isEditBookmarkModalOpen, isEditCategoryModalOpen, isEditFolderModalOpen, isFolderModalOpen, isDeleteModalOpen, isIconModalOpen, isImportModalOpen]);
+  }, [isModalOpen, isEditBookmarkModalOpen, isEditCategoryModalOpen, isEditFolderModalOpen, isFolderModalOpen, isDeleteModalOpen, isIconModalOpen, isImportModalOpen, dragDropMode]);
 
   if (status === 'loading') {
     return (
@@ -546,6 +564,13 @@ export default function DashboardPage() {
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
+    // Handle drag drop mode for moving bookmarks to folders
+    if (dragDropMode) {
+      await handleDragDropModeEnd(event);
+      return;
+    }
+
+    // Handle category reordering
     if (!reorderMode) return;
     const { active, over } = event;
 
@@ -895,6 +920,48 @@ export default function DashboardPage() {
     }
   };
 
+  const handleDragDropModeEnd = async (event: DragEndEvent) => {
+    if (!dragDropMode) return;
+    
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    // Check if we're dropping a bookmark onto a folder
+    const draggedBookmark = bookmarks.find(b => b.id === active.id);
+    const targetFolder = folders.find(f => f.id === over.id);
+    
+    if (draggedBookmark && targetFolder) {
+      // Only allow moving bookmarks that currently have a category as parent (not already in a folder)
+      const isBookmarkInCategory = categories.some(cat => cat.id === draggedBookmark.parent_id);
+      
+      if (isBookmarkInCategory) {
+        try {
+          const res = await fetch(`/api/items/${draggedBookmark.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...draggedBookmark,
+              parent_id: targetFolder.id,
+            }),
+          });
+
+          if (res.ok) {
+            // Update local state
+            setBookmarks(bookmarks.map(bookmark => 
+              bookmark.id === draggedBookmark.id 
+                ? { ...bookmark, parent_id: targetFolder.id }
+                : bookmark
+            ));
+          } else {
+            console.error('Failed to update bookmark parent');
+          }
+        } catch (error) {
+          console.error('Error moving bookmark to folder:', error);
+        }
+      }
+    }
+  };
+
   const parseBookmarkHtml = (html: string): { folders: ImportItem[], bookmarks: ImportItem[] } => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
@@ -1158,6 +1225,7 @@ export default function DashboardPage() {
                             onReorder={() => setReorderFoldersMode(true)}
                             onClick={handleFolderClick}
                             reorderMode={reorderFoldersMode}
+                            dragDropMode={dragDropMode}
                           />
                         ))}
                       </SortableContext>
@@ -1191,13 +1259,15 @@ export default function DashboardPage() {
                             onNameBlur={() => {}}
                             onNameKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                             reorderMode={reorderBookmarksMode}
+                            dragDropMode={dragDropMode}
+                            categories={categories}
                           />
                         ))}
                       </div>
                     </SortableContext>
                   </DndContext>
                   {!reorderBookmarksMode && (
-                    <div className="flex justify-center mt-4">
+                    <div className="flex justify-center gap-3 mt-4">
                       <button 
                         onClick={() => {
                           setItemType('bookmark');
@@ -1211,6 +1281,18 @@ export default function DashboardPage() {
                           maxWidth: '300px'
                         }}>
                         + Add Bookmark to Category
+                      </button>
+                      <button 
+                        onClick={() => setDragDropMode(!dragDropMode)}
+                        className={`px-4 py-2 text-white rounded-lg transition-colors hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${
+                          dragDropMode ? 'ring-2 ring-white ring-opacity-50' : ''
+                        }`}
+                        style={{ 
+                          backgroundColor: dragDropMode ? '#36453F' : '#E8000A',
+                          textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)',
+                          maxWidth: '300px'
+                        }}>
+                        {dragDropMode ? '✓ Drag Mode' : '↔ Drag to Folders'}
                       </button>
                     </div>
                   )}
