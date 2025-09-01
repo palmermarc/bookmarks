@@ -641,24 +641,14 @@ export default function DashboardPage() {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    // Get only the bookmarks in this category
-    const categoryBookmarks = bookmarks.filter(bookmark => bookmark.parent_id === selectedCategory);
-    const oldIndex = categoryBookmarks.findIndex((item) => item.id === active.id);
-    const newIndex = categoryBookmarks.findIndex((item) => item.id === over.id);
+    // Find the old and new indices in the full bookmarks array
+    const oldIndex = bookmarks.findIndex((item) => item.id === active.id);
+    const newIndex = bookmarks.findIndex((item) => item.id === over.id);
     
     if (oldIndex !== -1 && newIndex !== -1) {
-      // Reorder the category bookmarks
-      const reorderedCategoryBookmarks = arrayMove(categoryBookmarks, oldIndex, newIndex);
-      
-      // Update the main bookmarks array with the reordered category bookmarks
-      const updatedBookmarks = bookmarks.map(bookmark => {
-        if (bookmark.parent_id === selectedCategory) {
-          return reorderedCategoryBookmarks.find(item => item.id === bookmark.id) || bookmark;
-        }
-        return bookmark;
-      });
-      
-      setBookmarks(updatedBookmarks);
+      // Use arrayMove on the full bookmarks array
+      const newBookmarks = arrayMove(bookmarks, oldIndex, newIndex);
+      setBookmarks(newBookmarks);
     }
   };
 
@@ -953,13 +943,9 @@ export default function DashboardPage() {
       // Reorder the folder bookmarks
       const reorderedFolderBookmarks = arrayMove(folderBookmarks, oldIndex, newIndex);
       
-      // Update the main bookmarks array with the reordered folder bookmarks
-      const updatedBookmarks = bookmarks.map(bookmark => {
-        if (bookmark.parent_id === selectedFolder.id) {
-          return reorderedFolderBookmarks.find(item => item.id === bookmark.id) || bookmark;
-        }
-        return bookmark;
-      });
+      // Simple replacement: keep non-folder bookmarks and add reordered folder bookmarks
+      const nonFolderBookmarks = bookmarks.filter(bookmark => bookmark.parent_id !== selectedFolder.id);
+      const updatedBookmarks = [...nonFolderBookmarks, ...reorderedFolderBookmarks];
       
       setBookmarks(updatedBookmarks);
     }
