@@ -504,6 +504,19 @@ export default function DashboardPage() {
   const [selectedFolder, setSelectedFolder] = useState<Item | null>(null);
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [reorderFolderBookmarksMode, setReorderFolderBookmarksMode] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importHtml, setImportHtml] = useState('');
+  const [importCategory, setImportCategory] = useState<number | null>(null);
+  const [parsedImportData, setParsedImportData] = useState<{ folders: ImportItem[], bookmarks: ImportItem[] } | null>(null);
+
+  interface ImportItem {
+    id: string;
+    name: string;
+    type: string;
+    parent_id: string | null;
+    icon: string;
+    url?: string;
+  }
 
   const fetchItems = useCallback(async () => {
     const res = await fetch('/api/items');
@@ -538,6 +551,7 @@ export default function DashboardPage() {
         if (isFolderModalOpen) setIsFolderModalOpen(false);
         if (isDeleteModalOpen) setIsDeleteModalOpen(false);
         if (isIconModalOpen) setIsIconModalOpen(false);
+        if (isImportModalOpen) setIsImportModalOpen(false);
       }
     };
 
@@ -545,7 +559,7 @@ export default function DashboardPage() {
     return () => {
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [isModalOpen, isEditBookmarkModalOpen, isEditCategoryModalOpen, isEditFolderModalOpen, isFolderModalOpen, isDeleteModalOpen, isIconModalOpen]);
+  }, [isModalOpen, isEditBookmarkModalOpen, isEditCategoryModalOpen, isEditFolderModalOpen, isFolderModalOpen, isDeleteModalOpen, isIconModalOpen, isImportModalOpen]);
 
   if (status === 'loading') {
     return (
@@ -973,19 +987,161 @@ export default function DashboardPage() {
     }
   };
 
+  const parseBookmarkHtml = (html: string) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    const folders: ImportItem[] = [];
+    const bookmarks: ImportItem[] = [];
+    const folderMap = new Map();
+
+    const processNode = (node: Element, parentId: string | null = null) => {
+      const dt = node.querySelector('dt');
+      if (!dt) return;
+
+      const h3 = dt.querySelector('h3');
+      const a = dt.querySelector('a');
+      
+      if (h3) {
+        // This is a folder
+        const folderId = `folder-${Math.random().toString(36).substr(2, 9)}`;
+        const folder = {
+          id: folderId,
+          name: h3.textContent || 'Unnamed Folder',
+          type: 'folder',
+          parent_id: parentId,
+          icon: 'fa-solid fa-folder'
+        };
+        folders.push(folder);
+        folderMap.set(folderId, folder);
+
+        // Process children
+        const dl = node.querySelector('dl');
+        if (dl) {
+          const childNodes = dl.querySelectorAll(':scope > dt');
+          childNodes.forEach(childNode => {
+            processNode(childNode as Element, folderId);
+          });
+        }
+      } else if (a) {
+        // This is a bookmark
+        const bookmark = {
+          id: `bookmark-${Math.random().toString(36).substr(2, 9)}`,
+          name: a.textContent || 'Unnamed Bookmark',
+          url: a.getAttribute('href') || '',
+          type: 'bookmark',
+          parent_id: parentId,
+          icon: 'fa-solid fa-bookmark'
+        };
+        bookmarks.push(bookmark);
+      }
+    };
+
+    // Find all top-level DT elements
+    const topLevelNodes = doc.querySelectorAll('dl > dt');
+    topLevelNodes.forEach(node => {
+      processNode(node as Element);
+    });
+
+    return { folders, bookmarks };
+  };
+
+  const handleImportHtmlChange = (value: string) => {
+    setImportHtml(value);
+    if (value.trim()) {
+      try {
+        const parsed = parseBookmarkHtml(value);
+        setParsedImportData(parsed);
+      } catch (error) {
+        console.error('Error parsing bookmark HTML:', error);
+        setParsedImportData(null);
+      }
+    } else {
+      setParsedImportData(null);
+    }
+  };
+
+  const handleImportBookmarks = async () => {
+    if (!parsedImportData || !importCategory) return;
+
+    try {
+      // Create folders first
+      const folderIdMap = new Map();
+      for (const folder of parsedImportData.folders) {
+        const res = await fetch('/api/items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: folder.name,
+            type: 'folder',
+            icon: folder.icon,
+            parent_id: folder.parent_id ? folderIdMap.get(folder.parent_id) : importCategory,
+          }),
+        });
+
+        if (res.ok) {
+          const newFolder = await res.json();
+          folderIdMap.set(folder.id, newFolder.id);
+        }
+      }
+
+      // Create bookmarks
+      for (const bookmark of parsedImportData.bookmarks) {
+        await fetch('/api/items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: bookmark.name,
+            url: bookmark.url,
+            type: 'bookmark',
+            icon: bookmark.icon,
+            parent_id: bookmark.parent_id ? folderIdMap.get(bookmark.parent_id) : importCategory,
+          }),
+        });
+      }
+
+      // Reset form and refresh items
+      setIsImportModalOpen(false);
+      setImportHtml('');
+      setImportCategory(null);
+      setParsedImportData(null);
+      fetchItems();
+    } catch (error) {
+      console.error('Error importing bookmarks:', error);
+      alert('Failed to import bookmarks. Please check the console for details.');
+    }
+  };
+
   return (
     <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <div className="flex flex-col min-h-screen" style={{ backgroundColor: '#36453F' }}>
         <header className="fixed top-0 left-0 w-full flex items-center justify-between h-[85px] p-4 z-10" style={{ backgroundColor: '#1a1a1a', borderBottom: '1px solid #E8000A' }}>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2" 
-            style={{ 
-              backgroundColor: '#E8000A',
-              textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
-            }}>
-            New
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-2 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2" 
+              style={{ 
+                backgroundColor: '#E8000A',
+                textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
+              }}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              New
+            </button>
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="flex items-center gap-2 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2" 
+              style={{ 
+                backgroundColor: '#E8000A',
+                textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
+              }}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+              </svg>
+              Import
+            </button>
+          </div>
           {session.user?.image && (
             <Image
               src={session.user.image}
@@ -1615,6 +1771,99 @@ export default function DashboardPage() {
                   style={{ backgroundColor: '#E8000A' }}>
                   Yes
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isImportModalOpen && (
+          <div 
+            className="fixed inset-0 bg-gray-900/50 flex items-center justify-center z-50"
+            onClick={() => setIsImportModalOpen(false)}
+          >
+            <div 
+              className="p-8 rounded-lg shadow-2xl w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto" 
+              style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="text-xl font-bold mb-4 text-white">Import Chrome Bookmarks</h2>
+              
+              <div className="mb-6 p-4 bg-gray-800 rounded-lg">
+                <h3 className="text-lg font-semibold text-white mb-2">How to Export from Chrome:</h3>
+                <ol className="text-gray-300 text-sm space-y-2">
+                  <li>1. Open Chrome and click the three dots menu (⋮) in the top right</li>
+                  <li>2. Go to <strong>Bookmarks</strong> → <strong>Bookmark manager</strong></li>
+                  <li>3. Click the three dots menu in the Bookmark manager</li>
+                  <li>4. Select <strong>Export bookmarks</strong></li>
+                  <li>5. Save the HTML file to your computer</li>
+                  <li>6. Open the saved HTML file in a text editor and copy the contents</li>
+                </ol>
+              </div>
+
+              <div className="mb-4">
+                <label htmlFor="importHtml" className="block text-sm font-medium text-gray-300 mb-2">
+                  Paste Chrome Bookmark HTML:
+                </label>
+                <textarea
+                  id="importHtml"
+                  value={importHtml}
+                  onChange={(e) => handleImportHtmlChange(e.target.value)}
+                  className="w-full h-40 p-3 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A] text-xs font-mono"
+                  style={{ backgroundColor: '#36453F' }}
+                  placeholder="Paste the contents of your exported Chrome bookmark HTML file here..."
+                />
+              </div>
+
+              <div className="mb-4">
+                <label htmlFor="importCategorySelect" className="block text-sm font-medium text-gray-300 mb-2">
+                  Import to Category:
+                </label>
+                <select
+                  id="importCategorySelect"
+                  value={importCategory || ''}
+                  onChange={(e) => setImportCategory(Number(e.target.value))}
+                  className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
+                  style={{ backgroundColor: '#36453F' }}
+                >
+                  <option value="">Select a category...</option>
+                  {categories.map(category => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {parsedImportData && (
+                <div className="mb-4 p-4 bg-gray-800 rounded-lg">
+                  <h3 className="text-white font-semibold mb-2">Preview:</h3>
+                  <p className="text-gray-300 text-sm">
+                    Found <strong>{parsedImportData.folders.length}</strong> folders and{' '}
+                    <strong>{parsedImportData.bookmarks.length}</strong> bookmarks
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-4">
+                <button
+                  onClick={() => {
+                    setIsImportModalOpen(false);
+                    setImportHtml('');
+                    setImportCategory(null);
+                    setParsedImportData(null);
+                  }}
+                  className="px-4 py-2 text-white rounded-lg transition-colors"
+                  style={{ backgroundColor: '#36453F' }}>
+                  Cancel
+                </button>
+                {parsedImportData && importCategory && (
+                  <button
+                    onClick={handleImportBookmarks}
+                    className="px-6 py-2 text-white rounded-lg transition-colors"
+                    style={{ backgroundColor: '#E8000A' }}>
+                    Import {parsedImportData.folders.length} Folders and {parsedImportData.bookmarks.length} Bookmarks
+                  </button>
+                )}
               </div>
             </div>
           </div>
