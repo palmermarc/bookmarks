@@ -901,44 +901,79 @@ export default function DashboardPage() {
     const folders: ImportItem[] = [];
     const bookmarks: ImportItem[] = [];
 
-    const processDl = (dl: HTMLDListElement, parentId: string | null) => {
-      for (const child of Array.from(dl.children)) {
-        if (child.tagName === 'DT') {
-          const h3 = child.querySelector('h3');
-          const a = child.querySelector('a');
-          const nextDl = child.nextElementSibling;
+    const processElement = (element: Element, parentId: string | null = null) => {
+      // Check if this is a folder (has H3 element)
+      const h3 = element.querySelector(':scope > H3');
+      if (h3) {
+        const folderId = `folder-${Math.random().toString(36).substr(2, 9)}`;
+        folders.push({
+          id: folderId,
+          name: h3.textContent?.trim() || 'Unnamed Folder',
+          type: 'folder',
+          parent_id: parentId,
+          icon: 'fa-solid fa-folder',
+        });
 
-          if (h3) {
-            const folderId = `folder-${Math.random().toString(36).substr(2, 9)}`;
-            folders.push({
-              id: folderId,
-              name: h3.textContent || 'Unnamed Folder',
-              type: 'folder',
-              parent_id: parentId,
-              icon: 'fa-solid fa-folder',
-            });
-            if (nextDl && nextDl.tagName === 'DL') {
-              processDl(nextDl as HTMLDListElement, folderId);
-            }
-          } else if (a) {
-            bookmarks.push({
-              id: `bookmark-${Math.random().toString(36).substr(2, 9)}`,
-              name: a.textContent || 'Unnamed Bookmark',
-              url: a.getAttribute('href') || '',
-              type: 'bookmark',
-              parent_id: parentId,
-              icon: 'fa-solid fa-bookmark',
-            });
-          }
+        // Process all child elements in this folder
+        const childDl = element.querySelector(':scope > DL');
+        if (childDl) {
+          const childDts = childDl.querySelectorAll(':scope > DT');
+          childDts.forEach(childDt => processElement(childDt, folderId));
         }
+        return;
+      }
+
+      // Check if this is a bookmark (has A element)  
+      const a = element.querySelector(':scope > A') as HTMLAnchorElement;
+      if (a && a.href) {
+        bookmarks.push({
+          id: `bookmark-${Math.random().toString(36).substr(2, 9)}`,
+          name: a.textContent?.trim() || 'Unnamed Bookmark',
+          url: a.href,
+          type: 'bookmark',
+          parent_id: parentId,
+          icon: 'fa-solid fa-bookmark',
+        });
       }
     };
 
-    const dls = doc.querySelectorAll('dl');
-    dls.forEach(dl => {
-      // Start processing from top-level DLs that are not inside another DT
-      if (!dl.parentElement?.closest('DT')) {
-        processDl(dl, null);
+    // Find all top-level DT elements and process them
+    const allDts = doc.querySelectorAll('DT');
+    allDts.forEach(dt => {
+      // Only process DTs that are direct children of DL elements
+      if (dt.parentElement?.tagName === 'DL') {
+        // Check if this DT is a top-level one (not nested inside another folder structure we've already processed)
+        let isTopLevel = true;
+        let parent: Element | null = dt.parentElement;
+        
+        while (parent) {
+          if (parent.tagName === 'DT' && parent.querySelector('H3')) {
+            isTopLevel = false;
+            break;
+          }
+          parent = parent.parentElement;
+        }
+        
+        if (isTopLevel) {
+          processElement(dt, null);
+        }
+      }
+    });
+
+    // Also process any standalone bookmarks that might be at the root level
+    const rootBookmarks = doc.querySelectorAll('DL > DT > A');
+    rootBookmarks.forEach(a => {
+      const dt = a.parentElement;
+      if (dt && !dt.querySelector('H3')) {
+        // This is a bookmark not inside a folder
+        bookmarks.push({
+          id: `bookmark-${Math.random().toString(36).substr(2, 9)}`,
+          name: a.textContent?.trim() || 'Unnamed Bookmark',
+          url: a.getAttribute('href') || '',
+          type: 'bookmark',
+          parent_id: null,
+          icon: 'fa-solid fa-bookmark',
+        });
       }
     });
 
@@ -966,13 +1001,15 @@ export default function DashboardPage() {
     try {
       const folderIdMap = new Map<string, number>();
 
-      // Create folders first
-      for (const folder of parsedImportData.folders) {
-        const parentId = folder.parent_id ? folderIdMap.get(folder.parent_id) : importCategory;
-        if (folder.parent_id && !parentId) {
-          console.warn(`Could not find parent for folder ${folder.name}, importing to root`);
-        }
+      // Update folder logic: folders with parent folders should be moved to category level
+      const processedFolders = parsedImportData.folders.map(folder => ({
+        ...folder,
+        // If a folder has a parent folder, move it to the category level instead
+        parent_id: folder.parent_id ? null : folder.parent_id
+      }));
 
+      // Create folders first (all at category level now)
+      for (const folder of processedFolders) {
         const res = await fetch('/api/items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -980,7 +1017,7 @@ export default function DashboardPage() {
             name: folder.name,
             type: 'folder',
             icon: folder.icon,
-            parent_id: parentId || importCategory,
+            parent_id: importCategory, // All folders go directly under the category
           }),
         });
 
@@ -990,12 +1027,9 @@ export default function DashboardPage() {
         }
       }
 
-      // Create bookmarks
+      // Create bookmarks - they can still go in their original folders
       for (const bookmark of parsedImportData.bookmarks) {
         const parentId = bookmark.parent_id ? folderIdMap.get(bookmark.parent_id) : importCategory;
-        if (bookmark.parent_id && !parentId) {
-          console.warn(`Could not find parent for bookmark ${bookmark.name}, importing to root`);
-        }
 
         await fetch('/api/items', {
           method: 'POST',
