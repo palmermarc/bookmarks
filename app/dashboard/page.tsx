@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import IconSelectorModal from '@/app/components/IconSelectorModal'
 import IconRenderer from '@/app/components/IconRenderer'
 import { Item } from '@/lib/definitions';
@@ -113,73 +113,10 @@ function SortableBookmarkItem(props: {
   );
 }
 
-function BookmarkMenu(props: { 
-  bookmark: Item,
-  onEdit: (item: Item) => void,
-  onDelete: (item: Item) => void,
-  onReorder: () => void,
-  onClose: () => void,
-  position: { top: number, left: number } | null,
-}) {
-  const { bookmark, onEdit, onDelete, onReorder, onClose, position } = props;
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [onClose]);
-
-  const style = position
-    ? { top: position.top, left: position.left, position: 'fixed' as const }
-    : { right: 0, marginTop: '0.5rem', position: 'absolute' as const };
-
-  return (
-    <div ref={menuRef} style={style} className={`w-48 bg-gray-800 rounded-md shadow-lg z-20`}>
-      <a href="#" onClick={(e) => { e.preventDefault(); onEdit(bookmark); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Edit</a>
-      <a href="#" onClick={(e) => { e.preventDefault(); onDelete(bookmark); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Delete</a>
-      <a href="#" onClick={(e) => { e.preventDefault(); onReorder(); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Reorder</a>
-    </div>
-  );
-}
 
 
-function CategoryMenu(props: { 
-  category: Item,
-  onEdit: (item: Item) => void,
-  onDelete: (item: Item) => void,
-  onReorder: () => void,
-  onClose: () => void,
-}) {
-  const { category, onEdit, onDelete, onReorder, onClose } = props;
-  const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [onClose]);
 
-  return (
-    <div ref={menuRef} className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg z-20">
-      <a href="#" onClick={(e) => { e.preventDefault(); onEdit(category); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Edit</a>
-      <a href="#" onClick={(e) => { e.preventDefault(); onDelete(category); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Delete</a>
-      <a href="#" onClick={(e) => { e.preventDefault(); onReorder(); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Reorder</a>
-    </div>
-  );
-}
 
 function SortableFolder(props: {
   item: Item,
@@ -272,36 +209,7 @@ function SortableFolder(props: {
   );
 }
 
-function FolderMenu(props: {
-  folder: Item,
-  onEdit: (item: Item) => void,
-  onDelete: (item: Item) => void,
-  onReorder: () => void,
-  onClose: () => void,
-}) {
-  const { folder, onEdit, onDelete, onReorder, onClose } = props;
-  const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [onClose]);
-
-  return (
-    <div ref={menuRef} className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg z-20">
-      <a href="#" onClick={(e) => { e.preventDefault(); onEdit(folder); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Edit</a>
-      <a href="#" onClick={(e) => { e.preventDefault(); onDelete(folder); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Delete</a>
-      <a href="#" onClick={(e) => { e.preventDefault(); onReorder(); onClose(); }} className="block px-4 py-2 text-sm text-white hover:bg-gray-700">Reorder</a>
-    </div>
-  );
-}
 
 function SortableFolderBookmarkItem(props: {
   item: Item,
@@ -987,60 +895,51 @@ export default function DashboardPage() {
     }
   };
 
-  const parseBookmarkHtml = (html: string) => {
+  const parseBookmarkHtml = (html: string): { folders: ImportItem[], bookmarks: ImportItem[] } => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-    
     const folders: ImportItem[] = [];
     const bookmarks: ImportItem[] = [];
-    const folderMap = new Map();
 
-    const processNode = (node: Element, parentId: string | null = null) => {
-      const dt = node.querySelector('dt');
-      if (!dt) return;
+    const processDl = (dl: HTMLDListElement, parentId: string | null) => {
+      for (const child of Array.from(dl.children)) {
+        if (child.tagName === 'DT') {
+          const h3 = child.querySelector('h3');
+          const a = child.querySelector('a');
+          const nextDl = child.nextElementSibling;
 
-      const h3 = dt.querySelector('h3');
-      const a = dt.querySelector('a');
-      
-      if (h3) {
-        // This is a folder
-        const folderId = `folder-${Math.random().toString(36).substr(2, 9)}`;
-        const folder = {
-          id: folderId,
-          name: h3.textContent || 'Unnamed Folder',
-          type: 'folder',
-          parent_id: parentId,
-          icon: 'fa-solid fa-folder'
-        };
-        folders.push(folder);
-        folderMap.set(folderId, folder);
-
-        // Process children
-        const dl = node.querySelector('dl');
-        if (dl) {
-          const childNodes = dl.querySelectorAll(':scope > dt');
-          childNodes.forEach(childNode => {
-            processNode(childNode as Element, folderId);
-          });
+          if (h3) {
+            const folderId = `folder-${Math.random().toString(36).substr(2, 9)}`;
+            folders.push({
+              id: folderId,
+              name: h3.textContent || 'Unnamed Folder',
+              type: 'folder',
+              parent_id: parentId,
+              icon: 'fa-solid fa-folder',
+            });
+            if (nextDl && nextDl.tagName === 'DL') {
+              processDl(nextDl as HTMLDListElement, folderId);
+            }
+          } else if (a) {
+            bookmarks.push({
+              id: `bookmark-${Math.random().toString(36).substr(2, 9)}`,
+              name: a.textContent || 'Unnamed Bookmark',
+              url: a.getAttribute('href') || '',
+              type: 'bookmark',
+              parent_id: parentId,
+              icon: 'fa-solid fa-bookmark',
+            });
+          }
         }
-      } else if (a) {
-        // This is a bookmark
-        const bookmark = {
-          id: `bookmark-${Math.random().toString(36).substr(2, 9)}`,
-          name: a.textContent || 'Unnamed Bookmark',
-          url: a.getAttribute('href') || '',
-          type: 'bookmark',
-          parent_id: parentId,
-          icon: 'fa-solid fa-bookmark'
-        };
-        bookmarks.push(bookmark);
       }
     };
 
-    // Find all top-level DT elements
-    const topLevelNodes = doc.querySelectorAll('dl > dt');
-    topLevelNodes.forEach(node => {
-      processNode(node as Element);
+    const dls = doc.querySelectorAll('dl');
+    dls.forEach(dl => {
+      // Start processing from top-level DLs that are not inside another DT
+      if (!dl.parentElement?.closest('DT')) {
+        processDl(dl, null);
+      }
     });
 
     return { folders, bookmarks };
@@ -1065,9 +964,15 @@ export default function DashboardPage() {
     if (!parsedImportData || !importCategory) return;
 
     try {
+      const folderIdMap = new Map<string, number>();
+
       // Create folders first
-      const folderIdMap = new Map();
       for (const folder of parsedImportData.folders) {
+        const parentId = folder.parent_id ? folderIdMap.get(folder.parent_id) : importCategory;
+        if (folder.parent_id && !parentId) {
+          console.warn(`Could not find parent for folder ${folder.name}, importing to root`);
+        }
+
         const res = await fetch('/api/items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1075,7 +980,7 @@ export default function DashboardPage() {
             name: folder.name,
             type: 'folder',
             icon: folder.icon,
-            parent_id: folder.parent_id ? folderIdMap.get(folder.parent_id) : importCategory,
+            parent_id: parentId || importCategory,
           }),
         });
 
@@ -1087,6 +992,11 @@ export default function DashboardPage() {
 
       // Create bookmarks
       for (const bookmark of parsedImportData.bookmarks) {
+        const parentId = bookmark.parent_id ? folderIdMap.get(bookmark.parent_id) : importCategory;
+        if (bookmark.parent_id && !parentId) {
+          console.warn(`Could not find parent for bookmark ${bookmark.name}, importing to root`);
+        }
+
         await fetch('/api/items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1095,7 +1005,7 @@ export default function DashboardPage() {
             url: bookmark.url,
             type: 'bookmark',
             icon: bookmark.icon,
-            parent_id: bookmark.parent_id ? folderIdMap.get(bookmark.parent_id) : importCategory,
+            parent_id: parentId || importCategory,
           }),
         });
       }
