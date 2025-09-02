@@ -946,18 +946,31 @@ export default function DashboardPage() {
     if (!dragDropMode) return;
     
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    console.log('Drag drop event:', { activeId: active.id, overId: over?.id });
+    
+    if (!over || active.id === over.id) {
+      console.log('No valid drop target or dropped on self');
+      return;
+    }
 
     // Check if we're dropping a bookmark onto a folder
     const draggedBookmark = bookmarks.find(b => b.id === active.id);
     const targetFolder = folders.find(f => f.id === over.id);
     
+    console.log('Drag analysis:', { 
+      draggedBookmark: draggedBookmark?.name, 
+      targetFolder: targetFolder?.name 
+    });
+    
     if (draggedBookmark && targetFolder) {
       // Only allow moving bookmarks that currently have a category as parent (not already in a folder)
       const isBookmarkInCategory = categories.some(cat => cat.id === draggedBookmark.parent_id);
       
+      console.log('Bookmark can be moved:', isBookmarkInCategory);
+      
       if (isBookmarkInCategory) {
         try {
+          console.log('Attempting to move bookmark to folder...');
           const res = await fetch(`/api/items/${draggedBookmark.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -968,19 +981,24 @@ export default function DashboardPage() {
           });
 
           if (res.ok) {
+            console.log('Successfully moved bookmark to folder');
             // Update local state
             setBookmarks(bookmarks.map(bookmark => 
               bookmark.id === draggedBookmark.id 
                 ? { ...bookmark, parent_id: targetFolder.id }
                 : bookmark
             ));
+            // Refresh data to ensure consistency
+            fetchItems();
           } else {
-            console.error('Failed to update bookmark parent');
+            console.error('Failed to update bookmark parent', res.status);
           }
         } catch (error) {
           console.error('Error moving bookmark to folder:', error);
         }
       }
+    } else {
+      console.log('Invalid drag operation - not bookmark to folder');
     }
   };
 
@@ -1309,59 +1327,107 @@ export default function DashboardPage() {
                       </div>
                     )}
                   </div>
-                  <div className="mb-4">
-                    <DndContext collisionDetection={closestCenter} onDragEnd={handleFolderDragEnd}>
-                      <SortableContext items={folders.map(f => f.id)} strategy={verticalListSortingStrategy}>
-                        {folders.filter(item => item.parent_id === selectedCategory).map(folder => (
-                          <SortableFolder
-                            key={folder.id}
-                            item={folder}
-                            onEdit={handleEditFolder}
-                            onDelete={handleDeleteFolder}
-                            onReorder={() => setReorderFoldersMode(true)}
-                            onClick={handleFolderClick}
-                            reorderMode={reorderFoldersMode}
-                            dragDropMode={dragDropMode}
-                          />
-                        ))}
+                  {dragDropMode ? (
+                    // Single DndContext for drag drop mode to allow bookmarks to be dropped on folders
+                    <DndContext collisionDetection={closestCenter} onDragEnd={handleBookmarkDragEnd}>
+                      <SortableContext items={[...folders.map(f => f.id), ...bookmarks.map(b => b.id)]} strategy={verticalListSortingStrategy}>
+                        <div className="mb-4">
+                          {folders.filter(item => item.parent_id === selectedCategory).map(folder => (
+                            <SortableFolder
+                              key={folder.id}
+                              item={folder}
+                              onEdit={handleEditFolder}
+                              onDelete={handleDeleteFolder}
+                              onReorder={() => setReorderFoldersMode(true)}
+                              onClick={handleFolderClick}
+                              reorderMode={reorderFoldersMode}
+                              dragDropMode={dragDropMode}
+                            />
+                          ))}
+                        </div>
+                        {folders.filter(item => item.parent_id === selectedCategory).length > 0 && 
+                         bookmarks.filter(item => item.parent_id === selectedCategory).length > 0 && (
+                          <hr className="my-4" />
+                        )}
+                        <div className={`grid gap-3 ${reorderBookmarksMode ? 'grid-cols-1' : 'grid-cols-5'}`}>
+                          {bookmarks.filter(item => item.parent_id === selectedCategory).map(bookmark => (
+                            <SortableBookmarkItem
+                              key={bookmark.id}
+                              item={bookmark}
+                              onEdit={handleEditBookmark}
+                              onDelete={handleDeleteBookmark}
+                              onReorder={() => setReorderBookmarksMode(true)}
+                              isEditing={editingBookmark?.id === bookmark.id}
+                              editedName={editingBookmark?.name || ''}
+                              onNameChange={(e) => setEditingBookmark(b => b && ({ ...b, name: e.target.value }))}
+                              onNameBlur={() => {}}
+                              onNameKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                              reorderMode={reorderBookmarksMode}
+                              dragDropMode={dragDropMode}
+                              categories={categories}
+                            />
+                          ))}
+                        </div>
                       </SortableContext>
                     </DndContext>
-                    {reorderFoldersMode && (
-                      <button 
-                        onClick={handleSaveFolderReorder}
-                        className="w-full mt-4 px-4 py-2 text-white rounded-lg transition-colors" 
-                        style={{ backgroundColor: '#E8000A' }}>
-                        Save Folder Order
-                      </button>
-                    )}
-                  </div>
-                  {folders.filter(item => item.parent_id === selectedCategory).length > 0 && 
-                   bookmarks.filter(item => item.parent_id === selectedCategory).length > 0 && (
-                    <hr className="my-4" />
-                  )}
-                  <DndContext collisionDetection={closestCenter} onDragEnd={handleBookmarkDragEnd}>
-                    <SortableContext items={bookmarks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-                      <div className={`grid gap-3 ${reorderBookmarksMode ? 'grid-cols-1' : 'grid-cols-5'}`}>
-                        {bookmarks.filter(item => item.parent_id === selectedCategory).map(bookmark => (
-                          <SortableBookmarkItem
-                            key={bookmark.id}
-                            item={bookmark}
-                            onEdit={handleEditBookmark}
-                            onDelete={handleDeleteBookmark}
-                            onReorder={() => setReorderBookmarksMode(true)}
-                            isEditing={editingBookmark?.id === bookmark.id}
-                            editedName={editingBookmark?.name || ''}
-                            onNameChange={(e) => setEditingBookmark(b => b && ({ ...b, name: e.target.value }))}
-                            onNameBlur={() => {}}
-                            onNameKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-                            reorderMode={reorderBookmarksMode}
-                            dragDropMode={dragDropMode}
-                            categories={categories}
-                          />
-                        ))}
+                  ) : (
+                    // Separate DndContexts for normal reordering mode
+                    <>
+                      <div className="mb-4">
+                        <DndContext collisionDetection={closestCenter} onDragEnd={handleFolderDragEnd}>
+                          <SortableContext items={folders.map(f => f.id)} strategy={verticalListSortingStrategy}>
+                            {folders.filter(item => item.parent_id === selectedCategory).map(folder => (
+                              <SortableFolder
+                                key={folder.id}
+                                item={folder}
+                                onEdit={handleEditFolder}
+                                onDelete={handleDeleteFolder}
+                                onReorder={() => setReorderFoldersMode(true)}
+                                onClick={handleFolderClick}
+                                reorderMode={reorderFoldersMode}
+                                dragDropMode={dragDropMode}
+                              />
+                            ))}
+                          </SortableContext>
+                        </DndContext>
+                        {reorderFoldersMode && (
+                          <button 
+                            onClick={handleSaveFolderReorder}
+                            className="w-full mt-4 px-4 py-2 text-white rounded-lg transition-colors" 
+                            style={{ backgroundColor: '#E8000A' }}>
+                            Save Folder Order
+                          </button>
+                        )}
                       </div>
-                    </SortableContext>
-                  </DndContext>
+                      {folders.filter(item => item.parent_id === selectedCategory).length > 0 && 
+                       bookmarks.filter(item => item.parent_id === selectedCategory).length > 0 && (
+                        <hr className="my-4" />
+                      )}
+                      <DndContext collisionDetection={closestCenter} onDragEnd={handleBookmarkDragEnd}>
+                        <SortableContext items={bookmarks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                          <div className={`grid gap-3 ${reorderBookmarksMode ? 'grid-cols-1' : 'grid-cols-5'}`}>
+                            {bookmarks.filter(item => item.parent_id === selectedCategory).map(bookmark => (
+                              <SortableBookmarkItem
+                                key={bookmark.id}
+                                item={bookmark}
+                                onEdit={handleEditBookmark}
+                                onDelete={handleDeleteBookmark}
+                                onReorder={() => setReorderBookmarksMode(true)}
+                                isEditing={editingBookmark?.id === bookmark.id}
+                                editedName={editingBookmark?.name || ''}
+                                onNameChange={(e) => setEditingBookmark(b => b && ({ ...b, name: e.target.value }))}
+                                onNameBlur={() => {}}
+                                onNameKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                                reorderMode={reorderBookmarksMode}
+                                dragDropMode={dragDropMode}
+                                categories={categories}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    </>
+                  )}
                   {reorderBookmarksMode && (
                     <button 
                       onClick={handleSaveBookmarkReorder}
