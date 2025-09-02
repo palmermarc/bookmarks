@@ -59,7 +59,7 @@ function SortableBookmarkItem(props: {
       ) : (
         <>
           <IconRenderer icon={item.icon} className="w-4 h-4 text-white flex-shrink-0" />
-          {reorderMode ? (
+          {reorderMode || (dragDropMode && canDrag) ? (
             <span 
               className="flex-1 text-white cursor-move"
               title={item.name}
