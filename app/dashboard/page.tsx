@@ -61,7 +61,7 @@ function SortableBookmarkItem(props: {
           <IconRenderer icon={item.icon} className="w-4 h-4 text-white flex-shrink-0" />
           {reorderMode || (dragDropMode && canDrag) ? (
             <span 
-              className="flex-1 text-white cursor-move"
+              className="flex-1 text-yellow-200 cursor-move font-semibold"
               title={item.name}
             >
               {item.name}
@@ -176,7 +176,7 @@ function SortableFolder(props: {
         <div className="flex justify-center items-center" style={{ width: '75px', height: '75px', marginBottom: '5px' }}>
           <IconRenderer icon={item.icon} className="text-white" style={{ width: '50px', height: '50px' }} />
         </div>
-        <div className="text-center text-sm break-words" style={{ width: '100px' }}>
+        <div className={`text-center text-sm break-words ${dragDropMode ? 'text-green-200 font-semibold' : 'text-white'}`} style={{ width: '100px' }}>
           {item.name}
         </div>
         <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -585,6 +585,12 @@ export default function DashboardPage() {
   };
 
   const handleBookmarkDragEnd = async (event: DragEndEvent) => {
+    // Handle drag drop mode for moving bookmarks to folders
+    if (dragDropMode) {
+      await handleDragDropModeEnd(event);
+      return;
+    }
+
     if (!reorderBookmarksMode || !selectedCategory) return;
     
     const { active, over } = event;
@@ -1245,17 +1251,49 @@ export default function DashboardPage() {
               {selectedCategory && (
                 <>
                   <div 
-                    className="mb-6 p-4 text-white font-bold text-xl flex items-center gap-3"
+                    className="mb-6 p-4 text-white font-bold text-xl flex items-center justify-between"
                     style={{ 
                       background: 'linear-gradient(to right, #E8000A 33%, transparent 33%)',
                       textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)'
                     }}
                   >
-                    <IconRenderer 
-                      icon={categories.find(cat => cat.id === selectedCategory)?.icon} 
-                      className="w-6 h-6 text-white" 
-                    />
-                    {categories.find(cat => cat.id === selectedCategory)?.name || 'Category'}
+                    <div className="flex items-center gap-3">
+                      <IconRenderer 
+                        icon={categories.find(cat => cat.id === selectedCategory)?.icon} 
+                        className="w-6 h-6 text-white" 
+                      />
+                      {categories.find(cat => cat.id === selectedCategory)?.name || 'Category'}
+                    </div>
+                    {!reorderBookmarksMode && (
+                      <div className="flex gap-3">
+                        <button 
+                          onClick={() => {
+                            setItemType('bookmark');
+                            setParentId(selectedCategory);
+                            setIsModalOpen(true);
+                          }}
+                          className="px-4 py-2 text-white rounded-lg transition-colors hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" 
+                          style={{ 
+                            backgroundColor: '#E8000A',
+                            textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)',
+                            maxWidth: '200px'
+                          }}>
+                          + Add New
+                        </button>
+                        <button 
+                          onClick={() => setDragDropMode(!dragDropMode)}
+                          className={`px-4 py-2 text-white rounded-lg transition-colors hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${
+                            dragDropMode ? 'ring-2 ring-white ring-opacity-50' : ''
+                          }`}
+                          style={{ 
+                            backgroundColor: dragDropMode ? '#36453F' : '#E8000A',
+                            textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)',
+                            maxWidth: '200px'
+                          }}>
+                          {dragDropMode ? '✓ Drag Mode' : '↔ Drag Mode'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="mb-4">
                     <DndContext collisionDetection={closestCenter} onDragEnd={handleFolderDragEnd}>
@@ -1310,36 +1348,6 @@ export default function DashboardPage() {
                       </div>
                     </SortableContext>
                   </DndContext>
-                  {!reorderBookmarksMode && (
-                    <div className="flex justify-center gap-3 mt-4">
-                      <button 
-                        onClick={() => {
-                          setItemType('bookmark');
-                          setParentId(selectedCategory);
-                          setIsModalOpen(true);
-                        }}
-                        className="px-4 py-2 text-white rounded-lg transition-colors hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500" 
-                        style={{ 
-                          backgroundColor: '#E8000A',
-                          textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)',
-                          maxWidth: '300px'
-                        }}>
-                        + Add Bookmark to Category
-                      </button>
-                      <button 
-                        onClick={() => setDragDropMode(!dragDropMode)}
-                        className={`px-4 py-2 text-white rounded-lg transition-colors hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${
-                          dragDropMode ? 'ring-2 ring-white ring-opacity-50' : ''
-                        }`}
-                        style={{ 
-                          backgroundColor: dragDropMode ? '#36453F' : '#E8000A',
-                          textShadow: '1px 1px 2px rgba(0, 0, 0, 0.8)',
-                          maxWidth: '300px'
-                        }}>
-                        {dragDropMode ? '✓ Drag Mode' : '↔ Drag to Folders'}
-                      </button>
-                    </div>
-                  )}
                   {reorderBookmarksMode && (
                     <button 
                       onClick={handleSaveBookmarkReorder}
