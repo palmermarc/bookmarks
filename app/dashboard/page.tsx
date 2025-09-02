@@ -1349,7 +1349,7 @@ export default function DashboardPage() {
                          bookmarks.filter(item => item.parent_id === selectedCategory).length > 0 && (
                           <hr className="my-4" />
                         )}
-                        <div className={`grid gap-3 ${reorderBookmarksMode ? 'grid-cols-1' : 'grid-cols-5'}`}>
+                        <div className="grid gap-3 grid-cols-1">
                           {bookmarks.filter(item => item.parent_id === selectedCategory).map(bookmark => (
                             <SortableBookmarkItem
                               key={bookmark.id}
@@ -1405,7 +1405,7 @@ export default function DashboardPage() {
                       )}
                       <DndContext collisionDetection={closestCenter} onDragEnd={handleBookmarkDragEnd}>
                         <SortableContext items={bookmarks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-                          <div className={`grid gap-3 ${reorderBookmarksMode ? 'grid-cols-1' : 'grid-cols-5'}`}>
+                          <div className="grid gap-3 grid-cols-1">
                             {bookmarks.filter(item => item.parent_id === selectedCategory).map(bookmark => (
                               <SortableBookmarkItem
                                 key={bookmark.id}
