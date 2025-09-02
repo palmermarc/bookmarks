@@ -61,8 +61,9 @@ function SortableBookmarkItem(props: {
           <IconRenderer icon={item.icon} className="w-4 h-4 text-white flex-shrink-0" />
           {reorderMode || (dragDropMode && canDrag) ? (
             <span 
-              className="flex-1 text-yellow-200 cursor-move font-semibold"
+              className="flex-1 text-gray-900 cursor-move font-semibold"
               title={item.name}
+              style={{ textShadow: '1px 1px 1px #E8000A' }}
             >
               {item.name}
             </span>
@@ -176,7 +177,7 @@ function SortableFolder(props: {
         <div className="flex justify-center items-center" style={{ width: '75px', height: '75px', marginBottom: '5px' }}>
           <IconRenderer icon={item.icon} className="text-white" style={{ width: '50px', height: '50px' }} />
         </div>
-        <div className={`text-center text-sm break-words ${dragDropMode ? 'text-green-200 font-semibold' : 'text-white'}`} style={{ width: '100px' }}>
+        <div className={`text-center text-sm break-words ${dragDropMode ? 'text-gray-900 font-semibold' : 'text-white'}`} style={{ width: '100px', ...(dragDropMode && { textShadow: '1px 1px 1px #E8000A' }) }}>
           {item.name}
         </div>
         <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
