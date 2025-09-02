@@ -433,6 +433,8 @@ export default function DashboardPage() {
   const [importCategory, setImportCategory] = useState<number | null>(null);
   const [parsedImportData, setParsedImportData] = useState<{ folders: ImportItem[], bookmarks: ImportItem[] } | null>(null);
   const [dragDropMode, setDragDropMode] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState('');
 
   interface ImportItem {
     id: string;
@@ -1065,6 +1067,9 @@ export default function DashboardPage() {
   const handleImportBookmarks = async () => {
     if (!parsedImportData || !importCategory) return;
 
+    setIsImporting(true);
+    setImportProgress('Starting import...');
+
     try {
       const folderIdMap = new Map<string, number>();
 
@@ -1075,8 +1080,12 @@ export default function DashboardPage() {
         parent_id: folder.parent_id ? null : folder.parent_id
       }));
 
-      // Create folders first (all at category level now)
-      for (const folder of processedFolders) {
+      // Batch create folders with Promise.all for parallel processing
+      if (processedFolders.length > 0) {
+        setImportProgress(`Creating ${processedFolders.length} folders...`);
+      }
+      
+      const folderPromises = processedFolders.map(async (folder) => {
         const res = await fetch('/api/items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1090,35 +1099,70 @@ export default function DashboardPage() {
 
         if (res.ok) {
           const newFolder = await res.json();
-          folderIdMap.set(folder.id, newFolder.id);
+          return { originalId: folder.id, newId: newFolder.id };
         }
+        return null;
+      });
+
+      // Wait for all folders to be created
+      const folderResults = await Promise.all(folderPromises);
+      
+      // Build folder ID mapping
+      folderResults.forEach(result => {
+        if (result) {
+          folderIdMap.set(result.originalId, result.newId);
+        }
+      });
+
+      // Batch create bookmarks with Promise.all in smaller chunks to avoid overwhelming the server
+      const chunkSize = 20; // Process 20 bookmarks at a time
+      const bookmarkChunks = [];
+      
+      for (let i = 0; i < parsedImportData.bookmarks.length; i += chunkSize) {
+        bookmarkChunks.push(parsedImportData.bookmarks.slice(i, i + chunkSize));
       }
 
-      // Create bookmarks - they can still go in their original folders
-      for (const bookmark of parsedImportData.bookmarks) {
-        const parentId = bookmark.parent_id ? folderIdMap.get(bookmark.parent_id) : importCategory;
+      for (let i = 0; i < bookmarkChunks.length; i++) {
+        const chunk = bookmarkChunks[i];
+        setImportProgress(`Importing bookmarks: ${(i * chunkSize) + 1}-${Math.min((i + 1) * chunkSize, parsedImportData.bookmarks.length)} of ${parsedImportData.bookmarks.length}`);
+        
+        const bookmarkPromises = chunk.map(async (bookmark) => {
+          const parentId = bookmark.parent_id ? folderIdMap.get(bookmark.parent_id) : importCategory;
 
-        await fetch('/api/items', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: bookmark.name,
-            url: bookmark.url,
-            type: 'bookmark',
-            icon: bookmark.icon,
-            parent_id: parentId || importCategory,
-          }),
+          return fetch('/api/items', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: bookmark.name,
+              url: bookmark.url,
+              type: 'bookmark',
+              icon: bookmark.icon,
+              parent_id: parentId || importCategory,
+            }),
+          });
         });
+
+        // Wait for this chunk to complete before processing the next
+        await Promise.all(bookmarkPromises);
+        
+        // Small delay between chunks to prevent overwhelming the server
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
+      setImportProgress('Completing import...');
+      
       // Reset form and refresh items
       setIsImportModalOpen(false);
       setImportHtml('');
       setImportCategory(null);
       setParsedImportData(null);
+      setIsImporting(false);
+      setImportProgress('');
       fetchItems();
     } catch (error) {
       console.error('Error importing bookmarks:', error);
+      setImportProgress('Import failed!');
+      setIsImporting(false);
       alert('Failed to import bookmarks. Please check the console for details.');
     }
   };
@@ -1870,24 +1914,48 @@ export default function DashboardPage() {
                 </div>
               )}
 
+              {isImporting && (
+                <div className="mb-4 p-4 bg-blue-800 rounded-lg">
+                  <h3 className="text-white font-semibold mb-2">Importing...</h3>
+                  <p className="text-blue-200 text-sm">{importProgress}</p>
+                  <div className="w-full bg-blue-900 rounded-full h-2 mt-2">
+                    <div className="bg-blue-400 h-2 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-4">
                 <button
                   onClick={() => {
-                    setIsImportModalOpen(false);
-                    setImportHtml('');
-                    setImportCategory(null);
-                    setParsedImportData(null);
+                    if (!isImporting) {
+                      setIsImportModalOpen(false);
+                      setImportHtml('');
+                      setImportCategory(null);
+                      setParsedImportData(null);
+                      setImportProgress('');
+                    }
                   }}
-                  className="px-4 py-2 text-white rounded-lg transition-colors"
+                  disabled={isImporting}
+                  className={`px-4 py-2 text-white rounded-lg transition-colors ${
+                    isImporting ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                   style={{ backgroundColor: '#36453F' }}>
                   Cancel
                 </button>
-                {parsedImportData && importCategory && (
+                {parsedImportData && importCategory && !isImporting && (
                   <button
                     onClick={handleImportBookmarks}
                     className="px-6 py-2 text-white rounded-lg transition-colors"
                     style={{ backgroundColor: '#E8000A' }}>
                     Import {parsedImportData.folders.length} Folders and {parsedImportData.bookmarks.length} Bookmarks
+                  </button>
+                )}
+                {isImporting && (
+                  <button
+                    disabled
+                    className="px-6 py-2 text-gray-400 rounded-lg cursor-not-allowed"
+                    style={{ backgroundColor: '#555' }}>
+                    Importing...
                   </button>
                 )}
               </div>
