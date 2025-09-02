@@ -40,9 +40,11 @@ function SortableBookmarkItem(props: {
   const dndListeners = (reorderMode || canDrag) ? listeners : {};
 
   return (
-    <li ref={setNodeRef} style={style} {...attributes} {...dndListeners} 
+    <li ref={setNodeRef} 
+        style={canDrag ? { ...style, borderColor: '#E8000A' } : style} 
+        {...attributes} {...dndListeners} 
         className={`p-2 rounded flex items-center gap-2 ${
-          canDrag ? 'cursor-grab border-2 border-dashed border-yellow-400 bg-yellow-50 bg-opacity-10' : 
+          canDrag ? 'cursor-grab border-2 border-dashed bg-yellow-50 bg-opacity-10' : 
           reorderMode ? 'cursor-move' : 
           'cursor-pointer'
         }`}>
@@ -58,7 +60,9 @@ function SortableBookmarkItem(props: {
         />
       ) : (
         <>
-          <IconRenderer icon={item.icon} className="w-4 h-4 text-white flex-shrink-0" />
+          <IconRenderer icon={item.icon} className={`w-4 h-4 flex-shrink-0 ${
+            canDrag ? 'text-gray-900' : 'text-white'
+          }`} style={canDrag ? { filter: 'drop-shadow(1px 1px 1px #E8000A)' } : {}} />
           {reorderMode || (dragDropMode && canDrag) ? (
             <span 
               className="flex-1 text-gray-900 cursor-move font-semibold"
@@ -84,7 +88,10 @@ function SortableBookmarkItem(props: {
                 e.stopPropagation();
                 onReorder();
               }}
-              className="text-gray-400 hover:text-white transition-colors"
+              className={`transition-colors ${
+                canDrag ? 'text-gray-900 hover:text-gray-700' : 'text-gray-400 hover:text-white'
+              }`}
+              style={canDrag ? { filter: 'drop-shadow(1px 1px 1px #E8000A)' } : {}}
               title="Reorder"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,7 +104,10 @@ function SortableBookmarkItem(props: {
                 e.stopPropagation();
                 onEdit(item);
               }}
-              className="text-gray-400 hover:text-white transition-colors"
+              className={`transition-colors ${
+                canDrag ? 'text-gray-900 hover:text-gray-700' : 'text-gray-400 hover:text-white'
+              }`}
+              style={canDrag ? { filter: 'drop-shadow(1px 1px 1px #E8000A)' } : {}}
               title="Edit"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,7 +120,10 @@ function SortableBookmarkItem(props: {
                 e.stopPropagation();
                 onDelete(item);
               }}
-              className="text-gray-400 hover:text-red-400 transition-colors"
+              className={`transition-colors ${
+                canDrag ? 'text-gray-900 hover:text-gray-700' : 'text-gray-400 hover:text-red-400'
+              }`}
+              style={canDrag ? { filter: 'drop-shadow(1px 1px 1px #E8000A)' } : {}}
               title="Delete"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
