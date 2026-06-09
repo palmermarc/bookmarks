@@ -390,6 +390,14 @@ export default function Dashboard() {
         onSelect={(v) => { setView(v); setQuery('') }}
         query={query}
         setQuery={setQuery}
+        header={
+          <div className="brand">
+            <div className="brand-mark">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/redfyrn.png" alt="Bookmarks" className="brand-logo" />
+            </div>
+          </div>
+        }
         onReorderCats={onReorderCats}
         onReorderFolders={onReorderFolders}
         moveMode={moveMode}

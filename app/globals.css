@@ -114,3 +114,22 @@ a { color: inherit; text-decoration: none; }
   to   { opacity: 1; }
 }
 .fade-in { animation: fade .18s ease; }
+
+/* ── Scrollbar ───────────────────────────────────────────────── */
+::-webkit-scrollbar          { width: 14px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background:      var(--accent);
+  border-radius:   7px;
+  border:          5px solid transparent;
+  background-clip: padding-box;
+  transition:      border 180ms ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  border: 2px solid transparent;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
