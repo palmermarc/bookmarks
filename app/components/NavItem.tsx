@@ -1,5 +1,5 @@
 import React from 'react'
-import { AppCategory, AppFolder, AppData, ViewState } from '@/lib/adapter'
+import { AppCategory, AppFolder, ViewState } from '@/lib/adapter'
 import { IconFolder, IconChevron } from './icons'
 
 interface NavItemProps {
