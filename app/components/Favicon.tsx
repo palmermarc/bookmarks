@@ -22,6 +22,7 @@ export default function Favicon({ url, size = 18 }: FaviconProps) {
     }}>
       <span className="favicon-letter">{dom[0]?.toUpperCase() || '•'}</span>
       {!err && (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={faviconUrl(url)}
           width={size}
