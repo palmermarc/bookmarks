@@ -33,6 +33,7 @@ export default function IconRenderer({ icon, className = "w-4 h-4", style }: Ico
 
   if (icon.startsWith('drive-')) {
     const fileId = icon.replace('drive-', '')
+    // eslint-disable-next-line @next/next/no-img-element
     return <img src={`/api/drive/icon?id=${fileId}`} className={className} style={style} alt="" />
   }
 

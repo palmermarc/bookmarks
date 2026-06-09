@@ -123,6 +123,7 @@ export default function IconSelectorModal({ isOpen, onClose, onSelectIcon }: Ico
                     onClick={() => onSelectIcon(`drive-${f.id}`)}
                   >
                     {f.thumbnailLink
+                      // eslint-disable-next-line @next/next/no-img-element
                       ? <img src={f.thumbnailLink} style={{ width: 28, height: 28, objectFit: 'contain' }} alt={f.name} />
                       : <span style={{ fontSize: 10 }}>{f.name}</span>}
                   </button>

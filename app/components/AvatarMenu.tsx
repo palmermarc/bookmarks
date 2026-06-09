@@ -39,6 +39,7 @@ export default function AvatarMenu({ session, onSignOut }: AvatarMenuProps) {
     <div className="menu-wrap" ref={ref}>
       <button className="avatar" onClick={() => setOpen((o) => !o)} title={name ?? email ?? 'Account'}>
         {image && !imgError
+          // eslint-disable-next-line @next/next/no-img-element
           ? <img src={image} className="avatar-img" onError={() => setImgError(true)} referrerPolicy="no-referrer" alt="" />
           : <span className="avatar-initials">{ini}</span>
         }
@@ -48,6 +49,7 @@ export default function AvatarMenu({ session, onSignOut }: AvatarMenuProps) {
           <div className="menu-user">
             <span className="avatar avatar-lg">
               {image && !imgError
+                // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={image} className="avatar-img" referrerPolicy="no-referrer" alt="" />
                 : <span className="avatar-initials">{ini}</span>
               }
