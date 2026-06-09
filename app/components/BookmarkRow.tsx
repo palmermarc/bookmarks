@@ -4,6 +4,7 @@ import { domainOf, relativeDay } from '@/lib/utils'
 import { IconGrip, IconExternal, IconEdit, IconTrash, IconStar } from './icons'
 import Favicon from './Favicon'
 import TagChips from './TagChips'
+import IconRenderer from './IconRenderer'
 
 interface BookmarkRowProps {
   bm: AppBookmark
@@ -11,6 +12,7 @@ interface BookmarkRowProps {
   dragMode: boolean
   dragging: boolean
   dragOver: boolean
+  moveMode?: boolean
   onFav: (id: string) => void
   onEdit: (bm: AppBookmark) => void
   onDelete: (bm: AppBookmark) => void
@@ -19,24 +21,33 @@ interface BookmarkRowProps {
   onDragOver: (e: React.DragEvent) => void
   onDrop: () => void
   onDragEnd: () => void
+  onMoveDragStart?: (id: string) => void
+  onContextMenu?: (e: React.MouseEvent) => void
 }
 
 export default function BookmarkRow({
-  bm, tags, dragMode, dragging, dragOver,
+  bm, tags, dragMode, dragging, dragOver, moveMode,
   onFav, onEdit, onDelete, onOpen,
   onDragStart, onDragOver, onDrop, onDragEnd,
+  onMoveDragStart, onContextMenu,
 }: BookmarkRowProps) {
   return (
     <div
       className={'bm-row' + (dragging ? ' is-dragging' : '') + (dragOver ? ' is-dragover' : '')}
-      draggable={dragMode}
-      onDragStart={dragMode ? onDragStart : undefined}
+      draggable={dragMode || moveMode}
+      onDragStart={dragMode ? onDragStart : moveMode ? () => onMoveDragStart?.(bm.id) : undefined}
       onDragOver={dragMode ? onDragOver : undefined}
       onDrop={dragMode ? onDrop : undefined}
       onDragEnd={dragMode ? onDragEnd : undefined}
+      onContextMenu={onContextMenu ? (e) => { e.preventDefault(); onContextMenu(e) } : undefined}
     >
-      {dragMode && <span className="row-grip"><IconGrip size={16} /></span>}
-      <Favicon url={bm.url} />
+      {(dragMode || moveMode) && <span className="row-grip"><IconGrip size={16} /></span>}
+      {bm.icon
+        ? (bm.icon.startsWith('fa-') || bm.icon.startsWith('hero-') || bm.icon.startsWith('drive-'))
+          ? <span className="bm-favicon"><IconRenderer icon={bm.icon} style={{ width: 16, height: 16 }} /></span>
+          : <span className="bm-favicon" style={{ fontSize: 16, lineHeight: 1 }}>{bm.icon}</span>
+        : <Favicon url={bm.url} />
+      }
       <button className="bm-main" onClick={() => onOpen(bm)} title={bm.url}>
         <span className="bm-title">{bm.title}</span>
         <span className="bm-domain">{domainOf(bm.url)}</span>

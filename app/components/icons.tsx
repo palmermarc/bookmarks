@@ -57,3 +57,4 @@ export const IconGoogle = ({ size = 18 }: IconProps) => (
   </svg>
 )
 export const IconList = Ic(<><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.1" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.1" fill="currentColor" stroke="none"/></>)
+export const IconPhoto = Ic(<><path d="M3.5 7.5A1.5 1.5 0 0 1 5 6h14a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 19 18H5a1.5 1.5 0 0 1-1.5-1.5z"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="m4.5 17 4-4 3 2.5 2-2 4 3.5"/></>)

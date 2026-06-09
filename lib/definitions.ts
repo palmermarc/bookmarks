@@ -9,4 +9,5 @@ export interface Item {
   created_at: string;
   url?: string;
   order: number;
+  fav?: boolean;
 }

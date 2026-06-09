@@ -31,5 +31,10 @@ export default function IconRenderer({ icon, className = "w-4 h-4", style }: Ico
     }
   }
 
+  if (icon.startsWith('drive-')) {
+    const fileId = icon.replace('drive-', '')
+    return <img src={`/api/drive/icon?id=${fileId}`} className={className} style={style} alt="" />
+  }
+
   return null;
 }

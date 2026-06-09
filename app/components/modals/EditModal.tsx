@@ -5,6 +5,8 @@ import {
   IconBookmark, IconFolder, IconLayers, IconX, IconStar, IconChevronDown,
 } from '../icons'
 import Overlay from '../Overlay'
+import IconSelectorModal from '../IconSelectorModal'
+import IconRenderer from '../IconRenderer'
 
 const TYPE_TABS: { id: ItemKind; label: string; icon: React.ReactNode }[] = [
   { id: 'bookmark',  label: 'Bookmark',  icon: <IconBookmark size={15} /> },
@@ -28,6 +30,33 @@ interface EditModalProps {
   draft: EditDraft
   onClose: () => void
   onSave: (kind: ItemKind, form: EditDraft) => void
+}
+
+function IconPickField({ icon, onChange }: { icon?: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <div className="icon-pick-row">
+        <div className="icon-pick-preview">
+          {icon
+            ? (icon.startsWith('fa-') || icon.startsWith('hero-'))
+              ? <IconRenderer icon={icon} style={{ width: 20, height: 20 }} />
+              : <span style={{ fontSize: 20 }}>{icon}</span>
+            : <span style={{ color: 'var(--text-4)', fontSize: 12 }}>None</span>
+          }
+        </div>
+        <button type="button" className="btn btn-ghost" onClick={() => setOpen(true)}>Pick icon</button>
+        {icon && <button type="button" className="btn btn-ghost" onClick={() => onChange('')}>Clear</button>}
+      </div>
+      {open && (
+        <IconSelectorModal
+          isOpen
+          onClose={() => setOpen(false)}
+          onSelectIcon={(ic) => { onChange(ic); setOpen(false) }}
+        />
+      )}
+    </>
+  )
 }
 
 export default function EditModal({ data, draft, onClose, onSave }: EditModalProps) {
@@ -134,6 +163,9 @@ export default function EditModal({ data, draft, onClose, onSave }: EditModalPro
                 </div>
               </Field>
             )}
+            <Field label="Icon" hint="Overrides the favicon. Leave empty to use the site favicon.">
+              <IconPickField icon={form.icon} onChange={(v) => upd('icon', v)} />
+            </Field>
             <label className="fav-toggle">
               <input
                 type="checkbox"
@@ -157,6 +189,9 @@ export default function EditModal({ data, draft, onClose, onSave }: EditModalPro
                 onChange={(e) => upd('name', e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
               />
+            </Field>
+            <Field label="Icon">
+              <IconPickField icon={form.icon} onChange={(v) => upd('icon', v)} />
             </Field>
             <Field label="Category" hint="Leave empty to keep this folder loose.">
               <div className="select-wrap">
@@ -187,6 +222,9 @@ export default function EditModal({ data, draft, onClose, onSave }: EditModalPro
                 onChange={(e) => upd('name', e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
               />
+            </Field>
+            <Field label="Icon">
+              <IconPickField icon={form.icon} onChange={(v) => upd('icon', v)} />
             </Field>
             <Field label="Color">
               <div className="hue-picker">

@@ -6,7 +6,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Item } from '@/lib/definitions'
 import {
   adaptItems, resolveParentId,
-  AppData, ViewState, SortOption, ItemKind, EditDraft, ModalState, DeleteTarget,
+  AppData, AppCategory, AppFolder, AppBookmark, ViewState, SortOption, ItemKind, EditDraft, ModalState, DeleteTarget,
 } from '@/lib/adapter'
 import { domainOf } from '@/lib/utils'
 
@@ -21,8 +21,10 @@ import ConfirmModal from '@/app/components/modals/ConfirmModal'
 import ImportModal from '@/app/components/modals/ImportModal'
 import {
   IconBookmark, IconSearch, IconStar, IconClock, IconFolder, IconLayers,
-  IconTag, IconGrip, IconPlus, IconImport,
+  IconTag, IconGrip, IconPlus, IconImport, IconEdit,
 } from '@/app/components/icons'
+import ContextMenu from '@/app/components/ContextMenu'
+import IconSelectorModal from '@/app/components/IconSelectorModal'
 
 export default function Dashboard() {
   const { data: session, status } = useSession()
@@ -33,10 +35,14 @@ export default function Dashboard() {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortOption>('recent')
   const [dragMode, setDragMode] = useState(false)
+  const [moveMode, setMoveMode] = useState(false)
+  const [movingId, setMovingId] = useState<string | null>(null)
   const [modal, setModal] = useState<ModalState>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; bm: AppBookmark } | null>(null)
+  const [iconPickBm, setIconPickBm] = useState<AppBookmark | null>(null)
 
   // ── Auth guard ───────────────────────────────────────────────
   useEffect(() => {
@@ -123,15 +129,19 @@ export default function Dashboard() {
       }
     }
     const arr = [...list]
-    switch (sort) {
-      case 'az':     arr.sort((a, b) => a.title.localeCompare(b.title)); break
-      case 'za':     arr.sort((a, b) => b.title.localeCompare(a.title)); break
-      case 'domain': arr.sort((a, b) => domainOf(a.url).localeCompare(domainOf(b.url))); break
-      case 'fav':    arr.sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0) || a.addedDaysAgo - b.addedDaysAgo); break
-      default:       arr.sort((a, b) => a.addedDaysAgo - b.addedDaysAgo); break
+    if (!dragMode) {
+      switch (sort) {
+        case 'az':     arr.sort((a, b) => a.title.localeCompare(b.title)); break
+        case 'za':     arr.sort((a, b) => b.title.localeCompare(a.title)); break
+        case 'domain': arr.sort((a, b) => domainOf(a.url).localeCompare(domainOf(b.url))); break
+        case 'fav':    arr.sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0) || a.addedDaysAgo - b.addedDaysAgo); break
+        case 'recent': arr.sort((a, b) => a.addedDaysAgo - b.addedDaysAgo); break
+        case 'manual': break
+        default:       arr.sort((a, b) => a.addedDaysAgo - b.addedDaysAgo); break
+      }
     }
     return arr
-  }, [data, view, query, sort])
+  }, [data, view, query, sort, dragMode])
 
   const childFolders = useMemo(() =>
     view.type === 'category' && !query.trim()
@@ -152,7 +162,7 @@ export default function Dashboard() {
         const payload = {
           name: form.title || domainOf(url),
           url,
-          icon: '',
+          icon: form.icon ?? '',
           parent_id: parentId,
         }
         if (isEdit) {
@@ -175,7 +185,7 @@ export default function Dashboard() {
         const catDbId = form.categoryId
           ? data.categories.find(c => c.id === form.categoryId)?.dbId ?? null
           : null
-        const payload = { name: form.name, icon: '', parent_id: catDbId }
+        const payload = { name: form.name, icon: form.icon ?? '', parent_id: catDbId }
         if (isEdit) {
           const fol = data.folders.find(f => f.id === form.id)
           await fetch(`/api/items/${fol!.dbId}`, {
@@ -193,7 +203,7 @@ export default function Dashboard() {
       }
 
       if (kind === 'category') {
-        const payload = { name: form.name, icon: '' }
+        const payload = { name: form.name, icon: form.icon ?? '' }
         if (isEdit) {
           const cat = data.categories.find(c => c.id === form.id)
           await fetch(`/api/categories/${cat!.dbId}`, {
@@ -205,7 +215,7 @@ export default function Dashboard() {
           await fetch('/api/items', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: form.name, icon: '', type: 'category', parent_id: null }),
+            body: JSON.stringify({ name: form.name, icon: form.icon ?? '', type: 'category', parent_id: null }),
           })
         }
       }
@@ -247,6 +257,7 @@ export default function Dashboard() {
     const [moved] = arr.splice(from, 1)
     arr.splice(to, 0, moved)
     setData(d => ({ ...d, bookmarks: arr }))
+    setSort('manual')
     setDragId(null); setOverId(null)
     try {
       await fetch('/api/items/reorder', {
@@ -259,6 +270,93 @@ export default function Dashboard() {
       fetchItems()
     }
   }, [dragId, data.bookmarks, fetchItems])
+
+  // ── Favorite toggle ──────────────────────────────────────────
+  const onFav = useCallback(async (id: string) => {
+    const bm = data.bookmarks.find(b => b.id === id)
+    if (!bm) return
+    const next = !bm.fav
+    setData(prev => ({
+      ...prev,
+      bookmarks: prev.bookmarks.map(b => b.id === id ? { ...b, fav: next } : b),
+    }))
+    await fetch(`/api/items/${bm.dbId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fav: next }),
+    })
+  }, [data.bookmarks])
+
+  // ── Category / folder reorder ────────────────────────────────
+  const onReorderCats = useCallback(async (cats: AppCategory[]) => {
+    setData(d => ({ ...d, categories: cats }))
+    await fetch('/api/items/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: cats.map(c => ({ id: c.dbId })) }),
+    })
+  }, [])
+
+  const onReorderFolders = useCallback(async (folders: AppFolder[]) => {
+    setData(d => ({ ...d, folders }))
+    await fetch('/api/items/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: folders.map(f => ({ id: f.dbId })) }),
+    })
+  }, [])
+
+  // ── Move to folder ───────────────────────────────────────────
+  const onMoveToFolder = useCallback(async (bookmarkId: string, targetFolderId: string | null, targetCatId: string | null) => {
+    const bm = data.bookmarks.find(b => b.id === bookmarkId)
+    if (!bm) return
+    const parentDbId = targetFolderId
+      ? data.folders.find(f => f.id === targetFolderId)?.dbId ?? null
+      : targetCatId
+        ? data.categories.find(c => c.id === targetCatId)?.dbId ?? null
+        : null
+    setData(d => ({
+      ...d,
+      bookmarks: d.bookmarks.map(b => b.id === bookmarkId
+        ? { ...b, folderId: targetFolderId, categoryId: targetCatId, dbParentId: parentDbId }
+        : b
+      ),
+    }))
+    setMovingId(null)
+    await fetch(`/api/items/${bm.dbId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: bm.title, url: bm.url, icon: '', parent_id: parentDbId }),
+    })
+    fetchItems()
+  }, [data, fetchItems])
+
+  // ── Change icon (direct, bypasses EditModal) ─────────────────
+  const onChangeIcon = useCallback(async (bookmarkId: string, icon: string) => {
+    const bm = data.bookmarks.find(b => b.id === bookmarkId)
+    if (!bm) return
+    setData(d => ({
+      ...d,
+      bookmarks: d.bookmarks.map(b => b.id === bookmarkId ? { ...b, icon } : b),
+    }))
+    await fetch(`/api/items/${bm.dbId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: bm.title, url: bm.url, icon, parent_id: bm.dbParentId }),
+    })
+    fetchItems()
+  }, [data, fetchItems])
+
+  const bmToDraft = (bm: AppBookmark): EditDraft => ({
+    kind: 'bookmark',
+    id: bm.id,
+    title: bm.title,
+    url: bm.url,
+    icon: bm.icon,
+    fav: bm.fav,
+    tags: [...bm.tags],
+    parent: bm.folderId ? 'f:' + bm.folderId : bm.categoryId ? 'c:' + bm.categoryId : '',
+  })
 
   // ── New draft ────────────────────────────────────────────────
   const newDraft = (kind: ItemKind = 'bookmark'): EditDraft => {
@@ -292,14 +390,11 @@ export default function Dashboard() {
         onSelect={(v) => { setView(v); setQuery('') }}
         query={query}
         setQuery={setQuery}
-        header={
-          <div className="brand">
-            <div className="brand-mark">
-              <IconBookmark size={14} />
-            </div>
-            <span className="brand-name">Bookmarks</span>
-          </div>
-        }
+        onReorderCats={onReorderCats}
+        onReorderFolders={onReorderFolders}
+        moveMode={moveMode}
+        movingId={movingId}
+        onMoveToFolder={onMoveToFolder}
       />
 
       <main className="main">
@@ -315,14 +410,42 @@ export default function Dashboard() {
                 ? `${childFolders.length} folder${childFolders.length > 1 ? 's' : ''}`
                 : null}
             />
+            {view.type === 'category' && (() => {
+              const cat = data.categories.find(c => c.id === view.id)
+              return cat ? (
+                <button className="btn btn-ghost" title="Edit category" onClick={() => setModal({
+                  kind: 'edit',
+                  draft: { kind: 'category', id: cat.id, name: cat.name, icon: cat.icon, color: cat.color },
+                })}>
+                  <IconEdit size={15} />
+                </button>
+              ) : null
+            })()}
+            {view.type === 'folder' && (() => {
+              const fol = data.folders.find(f => f.id === view.id)
+              return fol ? (
+                <button className="btn btn-ghost" title="Edit folder" onClick={() => setModal({
+                  kind: 'edit',
+                  draft: { kind: 'folder', id: fol.id, name: fol.name, icon: fol.icon, categoryId: fol.categoryId ?? undefined },
+                })}>
+                  <IconEdit size={15} />
+                </button>
+              ) : null
+            })()}
           </div>
           <div className="topbar-right">
             <SortMenu sort={sort} setSort={setSort} />
             <button
               className={'btn btn-ghost' + (dragMode ? ' on-toggle' : '')}
-              onClick={() => setDragMode(m => !m)}
+              onClick={() => { setDragMode(m => !m); setMoveMode(false); setMovingId(null) }}
             >
               <IconGrip size={15} /> {dragMode ? 'Done' : 'Reorder'}
+            </button>
+            <button
+              className={'btn btn-ghost' + (moveMode ? ' on-toggle' : '')}
+              onClick={() => { setMoveMode(m => !m); setDragMode(false); setMovingId(null) }}
+            >
+              <IconFolder size={15} /> {moveMode ? 'Done' : 'Move'}
             </button>
             <div className="bar-sep" />
             <button className="btn" onClick={() => setModal({ kind: 'import' })}>
@@ -356,7 +479,7 @@ export default function Dashboard() {
                     onOpen={(fo) => setView({ type: 'folder', id: fo.id })}
                     onEdit={(fo) => setModal({
                       kind: 'edit',
-                      draft: { kind: 'folder', id: fo.id, name: fo.name, categoryId: fo.categoryId ?? undefined },
+                      draft: { kind: 'folder', id: fo.id, name: fo.name, icon: fo.icon, categoryId: fo.categoryId ?? undefined },
                     })}
                     onDelete={(fo) => setModal({
                       kind: 'confirm',
@@ -378,9 +501,11 @@ export default function Dashboard() {
                     bm={b}
                     tags={data.tags}
                     dragMode={dragMode}
+                    moveMode={moveMode}
                     dragging={dragId === b.id}
                     dragOver={overId === b.id}
-                    onFav={() => {}}
+                    onFav={onFav}
+                    onMoveDragStart={setMovingId}
                     onOpen={(bm) => window.open(bm.url, '_blank', 'noopener')}
                     onEdit={(bm) => setModal({
                       kind: 'edit',
@@ -406,6 +531,7 @@ export default function Dashboard() {
                     onDragOver={(e) => { e.preventDefault(); setOverId(b.id) }}
                     onDrop={() => onDrop(b.id)}
                     onDragEnd={() => { setDragId(null); setOverId(null) }}
+                    onContextMenu={(e) => setCtxMenu({ x: e.clientX, y: e.clientY, bm: b })}
                   />
                 ))}
               </div>
@@ -452,6 +578,26 @@ export default function Dashboard() {
           }
           onClose={() => setModal(null)}
           onConfirm={() => doDelete(modal.target)}
+        />
+      )}
+
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          bm={ctxMenu.bm}
+          onClose={() => setCtxMenu(null)}
+          onEdit={() => setModal({ kind: 'edit', draft: bmToDraft(ctxMenu.bm) })}
+          onChangeIcon={() => setIconPickBm(ctxMenu.bm)}
+          onDelete={() => setModal({ kind: 'confirm', target: { kind: 'bookmark', id: ctxMenu.bm.id, dbId: ctxMenu.bm.dbId, name: ctxMenu.bm.title } })}
+          onFav={() => onFav(ctxMenu.bm.id)}
+        />
+      )}
+      {iconPickBm && (
+        <IconSelectorModal
+          isOpen
+          onClose={() => setIconPickBm(null)}
+          onSelectIcon={(icon) => { onChangeIcon(iconPickBm.id, icon); setIconPickBm(null) }}
         />
       )}
 

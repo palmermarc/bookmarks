@@ -9,6 +9,7 @@ interface SortMenuProps {
 }
 
 const OPTS: { id: SortOption; label: string }[] = [
+  { id: 'manual', label: 'Manual order' },
   { id: 'recent', label: 'Recently added' },
   { id: 'az',     label: 'Title A–Z' },
   { id: 'za',     label: 'Title Z–A' },

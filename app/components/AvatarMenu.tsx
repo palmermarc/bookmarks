@@ -19,6 +19,7 @@ function initials(name?: string | null, email?: string | null): string {
 
 export default function AvatarMenu({ session, onSignOut }: AvatarMenuProps) {
   const [open, setOpen] = useState(false)
+  const [imgError, setImgError] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -31,17 +32,26 @@ export default function AvatarMenu({ session, onSignOut }: AvatarMenuProps) {
 
   const name = session.user?.name
   const email = session.user?.email
+  const image = session.user?.image
   const ini = initials(name, email)
 
   return (
     <div className="menu-wrap" ref={ref}>
       <button className="avatar" onClick={() => setOpen((o) => !o)} title={name ?? email ?? 'Account'}>
-        <span className="avatar-initials">{ini}</span>
+        {image && !imgError
+          ? <img src={image} className="avatar-img" onError={() => setImgError(true)} referrerPolicy="no-referrer" alt="" />
+          : <span className="avatar-initials">{ini}</span>
+        }
       </button>
       {open && (
         <div className="menu menu-right fade-in" style={{ minWidth: 220 }}>
           <div className="menu-user">
-            <span className="avatar avatar-lg"><span className="avatar-initials">{ini}</span></span>
+            <span className="avatar avatar-lg">
+              {image && !imgError
+                ? <img src={image} className="avatar-img" referrerPolicy="no-referrer" alt="" />
+                : <span className="avatar-initials">{ini}</span>
+              }
+            </span>
             <div>
               {name && <div className="menu-user-name">{name}</div>}
               {email && <div className="menu-user-mail">{email}</div>}

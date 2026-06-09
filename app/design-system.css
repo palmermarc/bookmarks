@@ -278,6 +278,7 @@
 }
 .avatar:hover { box-shadow: 0 0 0 3px var(--accent-dim2); }
 .avatar-initials { font-size: 12px; font-weight: 700; color: oklch(0.97 0.02 60); letter-spacing: 0.02em; }
+.avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .avatar-lg { width: 40px; height: 40px; }
 
 /* ===================== Modals ===================== */
@@ -387,3 +388,37 @@ select.inp { appearance: none; cursor: pointer; padding-right: 34px; }
   padding: 11px 18px; border-radius: 11px; font-size: 13.5px; font-weight: 500;
   box-shadow: var(--shadow-lg);
 }
+
+/* ===================== Icon picker ===================== */
+.icon-pick-row { display: flex; align-items: center; gap: 8px; }
+.icon-pick-preview {
+  width: 32px; height: 32px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border);
+}
+.icon-grid {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;
+  max-height: 320px; overflow-y: auto; margin-top: 12px;
+}
+.icon-btn-pick {
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; border: none; background: none;
+  color: var(--text-2); cursor: pointer; transition: background .12s, color .12s;
+}
+.icon-btn-pick:hover { background: var(--surface-2); color: var(--text); }
+
+/* ===================== Move-to-folder mode ===================== */
+.move-target { outline: 1.5px dashed var(--accent) !important; outline-offset: -1px; }
+.move-target:hover { background: var(--accent-dim) !important; }
+
+/* ===================== Drive icon picker ===================== */
+.drive-empty { padding: 24px 16px; text-align: center; color: var(--text-3); font-size: 13px; line-height: 1.6; }
+
+/* ===================== Context menu ========================= */
+.ctx-menu { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 4px; min-width: 160px; }
+.ctx-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border-radius: 6px; font-size: 13px; color: var(--text); background: none; border: none; cursor: pointer; text-align: left; }
+.ctx-item:hover { background: var(--surface-2); }
+.ctx-item.danger { color: #e0334d; }
+.ctx-item.danger:hover { background: oklch(0.96 0.02 10); }
+.ctx-sep { height: 1px; background: var(--border); margin: 3px 4px; }

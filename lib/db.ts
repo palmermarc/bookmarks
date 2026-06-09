@@ -12,7 +12,8 @@ export async function createItemsTable() {
       parent_id INTEGER REFERENCES items(id) ON DELETE CASCADE,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
       url VARCHAR(255),
-      "order" INTEGER
+      "order" INTEGER,
+      fav BOOLEAN NOT NULL DEFAULT FALSE
     );
   `;
   await sql`
@@ -21,6 +22,13 @@ export async function createItemsTable() {
   await sql`
     ALTER TABLE items ADD COLUMN IF NOT EXISTS "order" INTEGER;
   `;
+  await sql`
+    ALTER TABLE items ADD COLUMN IF NOT EXISTS fav BOOLEAN NOT NULL DEFAULT FALSE;
+  `;
+}
+
+export async function setFav(itemId: number, fav: boolean, userId: string) {
+  await sql`UPDATE items SET fav = ${fav} WHERE id = ${itemId} AND user_id = ${userId}`;
 }
 
 export async function createItem(item: Omit<Item, 'id' | 'created_at'>) {

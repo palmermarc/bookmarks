@@ -5,6 +5,7 @@ export interface AppCategory {
   dbId: number
   name: string
   color: number
+  icon?: string
 }
 
 export interface AppFolder {
@@ -13,6 +14,7 @@ export interface AppFolder {
   name: string
   categoryId: string | null
   dbParentId: number | null
+  icon?: string
 }
 
 export interface AppBookmark {
@@ -26,6 +28,7 @@ export interface AppBookmark {
   tags: string[]
   fav: boolean
   addedDaysAgo: number
+  icon?: string
 }
 
 export interface AppTag {
@@ -49,7 +52,7 @@ export type ViewState =
   | { type: 'folder'; id: string }
   | { type: 'tag'; id: string }
 
-export type SortOption = 'recent' | 'az' | 'za' | 'domain' | 'fav'
+export type SortOption = 'manual' | 'recent' | 'az' | 'za' | 'domain' | 'fav'
 export type ItemKind = 'bookmark' | 'folder' | 'category'
 
 export interface EditDraft {
@@ -58,6 +61,7 @@ export interface EditDraft {
   title?: string
   url?: string
   name?: string
+  icon?: string
   parent?: string
   tags?: string[]
   fav?: boolean
@@ -90,6 +94,7 @@ export function adaptItems(items: Item[]): AppData {
     dbId: c.id,
     name: c.name,
     color: 0,
+    icon: c.icon ?? '',
   }))
 
   const folders: AppFolder[] = rawFolders.map(f => ({
@@ -98,6 +103,7 @@ export function adaptItems(items: Item[]): AppData {
     name: f.name,
     categoryId: f.parent_id !== null ? `c_${f.parent_id}` : null,
     dbParentId: f.parent_id,
+    icon: f.icon ?? '',
   }))
 
   const now = Date.now()
@@ -115,8 +121,9 @@ export function adaptItems(items: Item[]): AppData {
       categoryId: !parentIsFolder && b.parent_id !== null ? `c_${b.parent_id}` : null,
       dbParentId: b.parent_id,
       tags: [],
-      fav: false,
+      fav: b.fav ?? false,
       addedDaysAgo,
+      icon: b.icon ?? undefined,
     }
   })
 

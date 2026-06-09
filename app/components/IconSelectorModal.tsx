@@ -5,6 +5,10 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 import * as solidIcons from '@fortawesome/free-solid-svg-icons'
 import * as heroIcons from '@heroicons/react/24/outline'
+import Overlay from './Overlay'
+import { IconX } from './icons'
+
+interface DriveFile { id: string; name: string; thumbnailLink?: string }
 
 interface IconSelectorModalProps {
   isOpen: boolean
@@ -13,74 +17,123 @@ interface IconSelectorModalProps {
 }
 
 export default function IconSelectorModal({ isOpen, onClose, onSelectIcon }: IconSelectorModalProps) {
+  const [tab, setTab] = useState<'icons' | 'drive'>('icons')
   const [searchTerm, setSearchTerm] = useState('')
+  const [driveFiles, setDriveFiles] = useState<DriveFile[]>([])
+  const [driveLoading, setDriveLoading] = useState(false)
+  const [driveLoaded, setDriveLoaded] = useState(false)
 
-  const faIcons = Object.keys(solidIcons).map(iconName => `fa-solid fa-${iconName}`)
-  const hIcons = Object.keys(heroIcons).map(iconName => `hero-outline-${iconName}`)
+  const faIcons = Object.entries(solidIcons)
+    .filter(([, v]) => v !== null && typeof v === 'object' && 'iconName' in v)
+    .map(([k]) => `fa-solid fa-${k}`)
+  const hIcons = Object.entries(heroIcons)
+    .filter(([, v]) => typeof v === 'function')
+    .map(([k]) => `hero-outline-${k}`)
+  const icons = [...faIcons, ...hIcons]
 
-  const icons = [...faIcons, ...hIcons];
-
-  const filteredIcons = icons.filter((icon) =>
+  const filteredIcons = icons.filter(icon =>
     icon.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  if (!isOpen) {
-    return null
+  const loadDrive = async () => {
+    setDriveLoading(true)
+    try {
+      const r = await fetch('/api/drive/icons')
+      const j = await r.json()
+      setDriveFiles(j.files ?? [])
+    } catch {
+      setDriveFiles([])
+    }
+    setDriveLoading(false)
+    setDriveLoaded(true)
   }
+
+  const switchToDrive = () => {
+    setTab('drive')
+    if (!driveLoaded) loadDrive()
+  }
+
+  if (!isOpen) return null
 
   const renderIcon = (icon: string) => {
     if (icon.startsWith('fa-solid')) {
-      const iconName = icon.replace('fa-solid fa-', '');
-      const solidIcon = (solidIcons as unknown as { [key: string]: IconDefinition })[iconName];
-      if (solidIcon) {
-        return <FontAwesomeIcon icon={solidIcon} className="w-6 h-6 text-white" />;
-      }
+      const iconName = icon.replace('fa-solid fa-', '')
+      const solidIcon = (solidIcons as unknown as { [key: string]: IconDefinition })[iconName]
+      if (solidIcon) return <FontAwesomeIcon icon={solidIcon} style={{ width: 18, height: 18 }} />
     } else if (icon.startsWith('hero-outline')) {
-      const iconName = icon.replace('hero-outline-', '');
-      const HeroIcon = (heroIcons as unknown as { [key: string]: FC<SVGProps<SVGSVGElement>> })[iconName];
-      if (HeroIcon) {
-        return <HeroIcon className="w-6 h-6 text-white" />;
-      }
+      const iconName = icon.replace('hero-outline-', '')
+      const HeroIcon = (heroIcons as unknown as { [key: string]: FC<SVGProps<SVGSVGElement>> })[iconName]
+      if (HeroIcon) return <HeroIcon style={{ width: 18, height: 18 }} />
     }
-    return null;
-  };
+    return null
+  }
 
   return (
-    <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
-      <div className="p-8 rounded-lg shadow-2xl w-11/12 max-w-md" style={{ backgroundColor: '#1a1a1a', border: '1px solid #E8000A' }}>
-        <h2 className="text-xl font-bold mb-4 text-white">Select Icon</h2>
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Search icons..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full p-2 rounded text-white focus:outline-none focus:ring-2 focus:ring-[#E8000A]"
-            style={{ backgroundColor: '#36453F' }}
-          />
-        </div>
-        <div className="grid grid-cols-4 gap-4 overflow-y-auto max-h-60">
-          {filteredIcons.map((icon) => (
-            <div
-              key={icon}
-              className="p-4 flex items-center justify-center rounded-lg cursor-pointer hover:bg-[#36453F]"
-              onClick={() => onSelectIcon(icon)}
-            >
-              {renderIcon(icon)}
-            </div>
-          ))}
-        </div>
-        <div className="flex justify-end mt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-white rounded-lg transition-colors"
-            style={{ backgroundColor: '#36453F', transition: 'background-color 0.3s ease-in-out' }}
-          >
-            Close
-          </button>
-        </div>
+    <Overlay onClose={onClose} wide>
+      <div className="modal-head">
+        <h2>Select Icon</h2>
+        <button className="icon-btn" onClick={onClose}><IconX size={16} /></button>
       </div>
-    </div>
+      <div className="type-tabs" style={{ padding: '0 16px 12px' }}>
+        <button className={'type-tab' + (tab === 'icons' ? ' on' : '')} onClick={() => setTab('icons')}>Icons</button>
+        <button className={'type-tab' + (tab === 'drive' ? ' on' : '')} onClick={switchToDrive}>Drive</button>
+      </div>
+      <div className="modal-body">
+        {tab === 'icons' && (
+          <>
+            <input
+              className="inp"
+              type="text"
+              placeholder="Search icons…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              autoFocus
+            />
+            <div className="icon-grid">
+              {filteredIcons.map((icon) => (
+                <button
+                  key={icon}
+                  type="button"
+                  className="icon-btn-pick"
+                  title={icon}
+                  onClick={() => onSelectIcon(icon)}
+                >
+                  {renderIcon(icon)}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        {tab === 'drive' && (
+          driveLoading
+            ? <div className="drive-empty">Loading…</div>
+            : driveFiles.length === 0
+            ? (
+              <div className="drive-empty">
+                No images found. Upload PNG, JPG, or SVG files to a folder named <strong>icons</strong> inside a folder named <strong>bookmarks</strong> in your Google Drive.<br /><br />You may need to sign out and sign back in to grant Drive access.
+              </div>
+            ) : (
+              <div className="icon-grid">
+                {driveFiles.map(f => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    className="icon-btn-pick"
+                    title={f.name}
+                    onClick={() => onSelectIcon(`drive-${f.id}`)}
+                  >
+                    {f.thumbnailLink
+                      ? <img src={f.thumbnailLink} style={{ width: 28, height: 28, objectFit: 'contain' }} alt={f.name} />
+                      : <span style={{ fontSize: 10 }}>{f.name}</span>}
+                  </button>
+                ))}
+              </div>
+            )
+        )}
+      </div>
+      <div className="modal-foot">
+        <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+      </div>
+    </Overlay>
   )
 }

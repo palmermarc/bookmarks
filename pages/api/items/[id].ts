@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { sql } from '@vercel/postgres';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { setFav } from '@/lib/db';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions);
@@ -11,7 +12,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { id } = req.query;
 
-  if (req.method === 'PUT') {
+  if (req.method === 'PATCH') {
+    try {
+      const { fav } = req.body;
+      await setFav(Number(id), Boolean(fav), session.user.email);
+      return res.status(200).json({ message: 'Updated' });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: 'Failed to update item' });
+    }
+  } else if (req.method === 'PUT') {
     try {
       const { name, parent_id, icon, url } = req.body;
 
@@ -39,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to delete item' });
     }
   } else {
-    res.setHeader('Allow', ['PUT', 'DELETE']);
+    res.setHeader('Allow', ['PATCH', 'PUT', 'DELETE']);
     res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }
