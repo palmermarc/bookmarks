@@ -2,11 +2,13 @@
 
 import { useSession, signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { IconBookmark, IconGoogle } from '@/app/components/icons'
 
 export default function Home() {
   const { status } = useSession()
   const router = useRouter()
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -16,27 +18,30 @@ export default function Home() {
 
   if (status === 'loading') {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">
-        <p>Loading...</p>
+      <div className="login-stage">
+        <div className="spinner" />
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-4">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-2xl text-center">
-        <h1 className="text-3xl sm:text-4xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600">
-          Welcome
-        </h1>
-        <p className="text-lg text-gray-400 mb-6">
-          Please sign in to access your dashboard.
-        </p>
+    <div className="login-stage">
+      <div className="login-glow" />
+      <div className="login-card fade-in">
+        <div className="login-mark">
+          <IconBookmark size={22} />
+        </div>
+        <h1 className="login-title">Welcome back</h1>
+        <p className="login-sub">Sign in to open your library.</p>
         <button
-          onClick={() => signIn('google')}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          className="google-btn"
+          onClick={() => { setLoading(true); signIn('google') }}
+          disabled={loading}
         >
-          Login with Google
+          {loading ? <span className="spinner spinner-sm" /> : <IconGoogle size={18} />}
+          {loading ? 'Signing in…' : 'Continue with Google'}
         </button>
+        <p className="login-foot">Your bookmarks are stored privately.</p>
       </div>
     </div>
   )
