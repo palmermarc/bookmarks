@@ -1,26 +1,116 @@
 @import "tailwindcss";
+@import './design-system.css';
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* ── Tailwind theme (login page still uses Tailwind utilities) ── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── OKLCH Design Tokens ─────────────────────────────────────── */
+:root {
+  /* Accent — Blood Orange default, overridable via JS */
+  --accent-l: 0.585;
+  --accent-c: 0.238;
+  --accent-h: 29;
+  --accent:        oklch(var(--accent-l) var(--accent-c) var(--accent-h));
+  --accent-strong: oklch(calc(var(--accent-l) - 0.06) var(--accent-c) var(--accent-h));
+  --accent-dim:    oklch(var(--accent-l) var(--accent-c) var(--accent-h) / 0.14);
+  --accent-dim2:   oklch(var(--accent-l) var(--accent-c) var(--accent-h) / 0.22);
+  --accent-ink:    oklch(0.97 0.02 var(--accent-h));
+
+  /* Surfaces */
+  --bg:        oklch(0.12 0.01 60);
+  --surface:   oklch(0.16 0.012 60);
+  --surface-2: oklch(0.19 0.012 60);
+  --raised:    oklch(0.20 0.014 60);
+
+  /* Text */
+  --text:   oklch(0.93 0.01 60);
+  --text-2: oklch(0.78 0.01 60);
+  --text-3: oklch(0.60 0.01 60);
+  --text-4: oklch(0.45 0.01 60);
+
+  /* Borders */
+  --border:      oklch(0.28 0.01 60);
+  --border-soft: oklch(0.22 0.01 60);
+
+  /* Hover */
+  --hover: oklch(0.24 0.01 60);
+
+  /* Star */
+  --star: oklch(0.82 0.13 85);
+
+  /* Shadow */
+  --shadow-lg: 0 8px 30px oklch(0 0 0 / 0.4);
+
+  /* Row density */
+  --row-h:   42px;
+  --row-pad: 11px;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ── Typography ──────────────────────────────────────────────── */
+:root {
+  --sans: var(--font-sans), system-ui, sans-serif;
+  --mono: var(--font-mono), ui-monospace, monospace;
 }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+button { cursor: pointer; border: none; background: none; padding: 0; font: inherit; color: inherit; }
+a { color: inherit; text-decoration: none; }
+
+/* ── Global utility classes ──────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 34px; padding: 0 13px; border-radius: 9px;
+  font-size: 13.5px; font-weight: 600; color: var(--text-2);
+  background: var(--surface); border: 1px solid var(--border-soft);
+  transition: background .12s, color .12s, border-color .12s;
+  white-space: nowrap; cursor: pointer;
+}
+.btn:hover { background: var(--surface-2); color: var(--text); }
+.btn-ghost { background: transparent; border-color: transparent; }
+.btn-ghost:hover { background: var(--hover); }
+.btn-accent {
+  background: var(--accent); color: var(--accent-ink);
+  border-color: transparent;
+}
+.btn-accent:hover { background: var(--accent-strong); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.icon-btn {
+  width: 28px; height: 28px; display: grid; place-items: center;
+  border-radius: 7px; color: var(--text-4);
+  transition: background .12s, color .12s; cursor: pointer;
+  border: none; background: none; padding: 0; font: inherit;
+}
+.icon-btn:hover { background: var(--hover); color: var(--text); }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 22px; padding: 0 8px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 500; color: var(--text-2);
+  background: oklch(0.7 0.1 var(--chip-h, 60) / 0.14);
+  border: 1px solid oklch(0.7 0.1 var(--chip-h, 60) / 0.3);
+}
+.chip-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: oklch(0.72 0.13 var(--chip-h, 60));
+  flex-shrink: 0;
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.fade-in { animation: fade .18s ease; }
