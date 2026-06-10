@@ -41,7 +41,10 @@ export default function Home() {
           {loading ? <span className="spinner spinner-sm" /> : <IconGoogle size={18} />}
           {loading ? 'Signing in…' : 'Continue with Google'}
         </button>
-        <p className="login-foot">Your bookmarks are stored privately.</p>
+        <p className="login-foot">
+          Your bookmarks are stored privately. Signing in also requests access to a
+          &quot;bookmarks&quot; folder in your Google Drive, used only for custom icons and backups.
+        </p>
       </div>
     </div>
   )
