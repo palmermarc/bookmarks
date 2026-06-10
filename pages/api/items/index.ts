@@ -11,6 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'GET') {
     try {
+      await createItemsTable();
       const items = await getItems(session.user.email);
       return res.status(200).json(items);
     } catch (error) {

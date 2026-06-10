@@ -280,11 +280,18 @@ export default function Dashboard() {
       ...prev,
       bookmarks: prev.bookmarks.map(b => b.id === id ? { ...b, fav: next } : b),
     }))
-    await fetch(`/api/items/${bm.dbId}`, {
+    const res = await fetch(`/api/items/${bm.dbId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fav: next }),
     })
+    if (!res.ok) {
+      console.error('Failed to update favorite', await res.text().catch(() => ''))
+      setData(prev => ({
+        ...prev,
+        bookmarks: prev.bookmarks.map(b => b.id === id ? { ...b, fav: !next } : b),
+      }))
+    }
   }, [data.bookmarks])
 
   // ── Category / folder reorder ────────────────────────────────
