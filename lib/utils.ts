@@ -7,7 +7,7 @@ export function domainOf(url: string): string {
 }
 
 export function faviconUrl(url: string): string {
-  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domainOf(url))}&sz=64`
+  return `/api/favicon?domain=${encodeURIComponent(domainOf(url))}`
 }
 
 export function hueOf(str: string): number {

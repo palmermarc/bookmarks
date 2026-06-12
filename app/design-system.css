@@ -220,6 +220,8 @@
 }
 .favicon-img.in { opacity: 1; }
 
+.bm-favicon { flex-shrink: 0; width: 26px; height: 26px; display: grid; place-items: center; }
+
 .bm-main { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex: 1 1 auto; text-align: left; }
 .bm-title {
   font-size: 14px; font-weight: 500; color: var(--text); flex: 0 1 auto; min-width: 0;
