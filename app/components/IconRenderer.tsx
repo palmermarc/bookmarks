@@ -40,9 +40,9 @@ export default function IconRenderer({ icon, className = "w-4 h-4", style }: Ico
   return null;
 }
 
-export function ItemIcon({ icon, fallback }: { icon?: string; fallback: ReactNode }) {
+export function ItemIcon({ icon, fallback, size = 15 }: { icon?: string; fallback: ReactNode; size?: number }) {
   if (!icon) return <>{fallback}</>
   if (icon.startsWith('fa-') || icon.startsWith('hero-') || icon.startsWith('drive-'))
-    return <IconRenderer icon={icon} style={{ width: 15, height: 15 }} />
-  return <span style={{ fontSize: 15, lineHeight: 1 }}>{icon}</span>
+    return <IconRenderer icon={icon} style={{ width: size, height: size }} />
+  return <span style={{ fontSize: size, lineHeight: 1 }}>{icon}</span>
 }
