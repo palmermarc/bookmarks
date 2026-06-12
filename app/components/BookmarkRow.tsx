@@ -16,7 +16,6 @@ interface BookmarkRowProps {
   onFav: (id: string) => void
   onEdit: (bm: AppBookmark) => void
   onDelete: (bm: AppBookmark) => void
-  onOpen: (bm: AppBookmark) => void
   onDragStart: (e: React.DragEvent) => void
   onDragOver: (e: React.DragEvent) => void
   onDrop: () => void
@@ -27,7 +26,7 @@ interface BookmarkRowProps {
 
 export default function BookmarkRow({
   bm, tags, dragMode, dragging, dragOver, moveMode,
-  onFav, onEdit, onDelete, onOpen,
+  onFav, onEdit, onDelete,
   onDragStart, onDragOver, onDrop, onDragEnd,
   onMoveDragStart, onContextMenu,
 }: BookmarkRowProps) {
@@ -48,10 +47,10 @@ export default function BookmarkRow({
           : <span className="bm-favicon" style={{ fontSize: 16, lineHeight: 1 }}>{bm.icon}</span>
         : <Favicon url={bm.url} />
       }
-      <button className="bm-main" onClick={() => onOpen(bm)} title={bm.url}>
+      <a className="bm-main" href={bm.url} target="_blank" rel="noopener noreferrer" title={bm.url}>
         <span className="bm-title">{bm.title}</span>
         <span className="bm-domain">{domainOf(bm.url)}</span>
-      </button>
+      </a>
       <TagChips ids={bm.tags} tags={tags} />
       <span className="bm-time">{relativeDay(bm.addedDaysAgo)}</span>
       <button
@@ -62,9 +61,9 @@ export default function BookmarkRow({
         <IconStar size={16} filled={bm.fav} />
       </button>
       <span className="row-actions">
-        <button className="icon-btn" title="Open" onClick={() => onOpen(bm)}>
+        <a className="icon-btn" title="Open" href={bm.url} target="_blank" rel="noopener noreferrer">
           <IconExternal size={15} />
-        </button>
+        </a>
         <button className="icon-btn" title="Edit" onClick={() => onEdit(bm)}>
           <IconEdit size={15} />
         </button>

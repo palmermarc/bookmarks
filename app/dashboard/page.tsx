@@ -521,7 +521,6 @@ export default function Dashboard() {
                     dragOver={overId === b.id}
                     onFav={onFav}
                     onMoveDragStart={setMovingId}
-                    onOpen={(bm) => window.open(bm.url, '_blank', 'noopener')}
                     onEdit={(bm) => setModal({
                       kind: 'edit',
                       draft: {
