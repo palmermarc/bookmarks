@@ -22,6 +22,7 @@ export default function IconSelectorModal({ isOpen, onClose, onSelectIcon }: Ico
   const [driveFiles, setDriveFiles] = useState<DriveFile[]>([])
   const [driveLoading, setDriveLoading] = useState(false)
   const [driveLoaded, setDriveLoaded] = useState(false)
+  const [driveError, setDriveError] = useState<string | null>(null)
 
   const faIcons = Object.entries(solidIcons)
     .filter(([, v]) => v !== null && typeof v === 'object' && 'iconName' in v)
@@ -41,8 +42,10 @@ export default function IconSelectorModal({ isOpen, onClose, onSelectIcon }: Ico
       const r = await fetch('/api/drive/icons')
       const j = await r.json()
       setDriveFiles(j.files ?? [])
+      setDriveError(j.error ?? null)
     } catch {
       setDriveFiles([])
+      setDriveError(null)
     }
     setDriveLoading(false)
     setDriveLoaded(true)
@@ -110,7 +113,11 @@ export default function IconSelectorModal({ isOpen, onClose, onSelectIcon }: Ico
             : driveFiles.length === 0
             ? (
               <div className="drive-empty">
-                No images found. Upload PNG, JPG, or SVG files to a folder named <strong>bookmarks</strong> in your Google Drive (optionally inside an <strong>icons</strong> subfolder).<br /><br />You may need to sign out and sign back in to grant Drive access.
+                {driveError ? (
+                  <>{driveError}<br /><br />You may need to sign out and sign back in to grant Drive access.</>
+                ) : (
+                  <>No images found. Upload PNG, JPG, or SVG files to a folder named <strong>bookmarks</strong> in your Google Drive (optionally inside an <strong>icons</strong> subfolder).<br /><br />You may need to sign out and sign back in to grant Drive access.</>
+                )}
               </div>
             ) : (
               <div className="icon-grid">
