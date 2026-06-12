@@ -110,7 +110,7 @@ export default function IconSelectorModal({ isOpen, onClose, onSelectIcon }: Ico
             : driveFiles.length === 0
             ? (
               <div className="drive-empty">
-                No images found. Upload PNG, JPG, or SVG files to a folder named <strong>icons</strong> inside a folder named <strong>bookmarks</strong> in your Google Drive.<br /><br />You may need to sign out and sign back in to grant Drive access.
+                No images found. Upload PNG, JPG, or SVG files to a folder named <strong>bookmarks</strong> in your Google Drive (optionally inside an <strong>icons</strong> subfolder).<br /><br />You may need to sign out and sign back in to grant Drive access.
               </div>
             ) : (
               <div className="icon-grid">

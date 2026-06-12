@@ -24,8 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     `${DRIVE_BASE}/files?q=${encodeURIComponent(`'${bmId}' in parents and name='icons' and mimeType='application/vnd.google-apps.folder' and trashed=false`)}&fields=files(id)`,
     token,
   )
-  const icId = icFolder.files?.[0]?.id
-  if (!icId) { res.json({ files: [] }); return }
+  const icId = icFolder.files?.[0]?.id ?? bmId
 
   const list = await driveGet(
     `${DRIVE_BASE}/files?q=${encodeURIComponent(`'${icId}' in parents and mimeType contains 'image/' and trashed=false`)}&fields=files(id,name,thumbnailLink)&pageSize=100`,
