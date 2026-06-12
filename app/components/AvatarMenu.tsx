@@ -1,14 +1,11 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { Session } from 'next-auth'
-import { signIn } from 'next-auth/react'
 
 interface AvatarMenuProps {
   session: Session
   onSignOut: () => void
 }
-
-type BackupState = 'idle' | 'loading' | 'done' | 'error'
 
 function initials(name?: string | null, email?: string | null): string {
   if (name) {
@@ -23,8 +20,6 @@ function initials(name?: string | null, email?: string | null): string {
 export default function AvatarMenu({ session, onSignOut }: AvatarMenuProps) {
   const [open, setOpen] = useState(false)
   const [imgError, setImgError] = useState(false)
-  const [backupState, setBackupState] = useState<BackupState>('idle')
-  const [driveDenied, setDriveDenied] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -39,25 +34,6 @@ export default function AvatarMenu({ session, onSignOut }: AvatarMenuProps) {
   const email = session.user?.email
   const image = session.user?.image
   const ini = initials(name, email)
-  const hasDriveAccess = (session as Session & { hasDriveAccess?: boolean }).hasDriveAccess
-  const needsDriveAccess = hasDriveAccess === false || driveDenied
-
-  const handleBackup = async () => {
-    setBackupState('loading')
-    try {
-      const r = await fetch('/api/drive/backup', { method: 'POST' })
-      if (r.ok) {
-        setBackupState('done')
-      } else {
-        const j = await r.json().catch(() => ({}))
-        if (j.error === 'drive_access_denied') setDriveDenied(true)
-        setBackupState('error')
-      }
-    } catch {
-      setBackupState('error')
-    }
-    setTimeout(() => setBackupState('idle'), 2500)
-  }
 
   return (
     <div className="menu-wrap" ref={ref}>
@@ -84,25 +60,10 @@ export default function AvatarMenu({ session, onSignOut }: AvatarMenuProps) {
             </div>
           </div>
           <div className="menu-sep" />
-          {needsDriveAccess ? (
-            <div className="menu-item-stack">
-              <span className="menu-hint">
-                Backups need access to a &quot;bookmarks&quot; folder in Drive — you didn&apos;t grant this yet.
-              </span>
-              <button className="menu-item" onClick={() => signIn('google', { callbackUrl: '/dashboard' })}>
-                <span>Grant Drive access</span>
-              </button>
-            </div>
-          ) : (
-            <button className="menu-item" onClick={handleBackup} disabled={backupState === 'loading'}>
-              <span>Backup to Drive</span>
-              {backupState !== 'idle' && (
-                <span className="menu-badge">
-                  {backupState === 'loading' ? 'Backing up…' : backupState === 'done' ? 'Backed up ✓' : 'Failed'}
-                </span>
-              )}
-            </button>
-          )}
+          <button className="menu-item">
+            <span>Sync status</span>
+            <span className="menu-badge">Synced</span>
+          </button>
           <div className="menu-sep" />
           <button className="menu-item danger" onClick={() => { setOpen(false); onSignOut() }}>
             <span>Sign out</span>

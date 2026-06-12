@@ -8,7 +8,7 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
       authorization: {
         params: {
-          scope: 'openid email profile https://www.googleapis.com/auth/drive',
+          scope: 'openid email profile https://www.googleapis.com/auth/drive.readonly',
           access_type: 'offline',
           prompt: 'consent',
         },
@@ -17,17 +17,11 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, account }) {
-      if (account) {
-        token.accessToken = account.access_token
-        token.scope = account.scope
-      }
+      if (account) token.accessToken = account.access_token
       return token
     },
     async session({ session, token }) {
-      const s = session as { accessToken?: string; hasDriveAccess?: boolean }
-      s.accessToken = token.accessToken as string | undefined
-      s.hasDriveAccess = typeof token.scope === 'string'
-        && token.scope.includes('https://www.googleapis.com/auth/drive')
+      (session as { accessToken?: string }).accessToken = token.accessToken as string | undefined
       return session
     },
   },
