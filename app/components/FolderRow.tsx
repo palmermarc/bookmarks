@@ -1,5 +1,6 @@
 import { AppFolder } from '@/lib/adapter'
 import { IconFolder, IconEdit, IconTrash, IconChevron } from './icons'
+import { ItemIcon } from './IconRenderer'
 
 interface FolderRowProps {
   folder: AppFolder
@@ -13,7 +14,7 @@ export default function FolderRow({ folder, count, onOpen, onEdit, onDelete }: F
   return (
     <div className="folder-row" onClick={() => onOpen(folder)}>
       <div className="folder-row-top">
-        <span className="folder-ic"><IconFolder size={17} /></span>
+        <span className="folder-ic"><ItemIcon icon={folder.icon} fallback={<IconFolder size={17} />} /></span>
         <span className="folder-name">{folder.name}</span>
       </div>
       <div className="folder-row-bottom">

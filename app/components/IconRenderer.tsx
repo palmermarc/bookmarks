@@ -1,6 +1,6 @@
 'use client'
 
-import { FC, SVGProps, CSSProperties } from 'react'
+import { FC, SVGProps, CSSProperties, ReactNode } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 import * as solidIcons from '@fortawesome/free-solid-svg-icons'
@@ -38,4 +38,11 @@ export default function IconRenderer({ icon, className = "w-4 h-4", style }: Ico
   }
 
   return null;
+}
+
+export function ItemIcon({ icon, fallback }: { icon?: string; fallback: ReactNode }) {
+  if (!icon) return <>{fallback}</>
+  if (icon.startsWith('fa-') || icon.startsWith('hero-') || icon.startsWith('drive-'))
+    return <IconRenderer icon={icon} style={{ width: 15, height: 15 }} />
+  return <span style={{ fontSize: 15, lineHeight: 1 }}>{icon}</span>
 }

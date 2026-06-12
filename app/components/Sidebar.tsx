@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import { AppCategory, AppData, AppFolder, ViewState } from '@/lib/adapter'
 import { IconSearch, IconX, IconLayers, IconStar, IconClock, IconFolder, IconChevronDown } from './icons'
 import { NavItem, CategoryGroup } from './NavItem'
+import { ItemIcon } from './IconRenderer'
 
 interface SidebarProps {
   data: AppData
@@ -138,7 +139,7 @@ export default function Sidebar({ data, view, onSelect, query, setQuery, header,
               {looseFolders.map((f) => (
                 <NavItem
                   key={f.id}
-                  icon={f.icon ? <span style={{ fontSize: 15 }}>{f.icon}</span> : <IconFolder size={15} />}
+                  icon={<ItemIcon icon={f.icon} fallback={<IconFolder size={15} />} />}
                   label={f.name}
                   count={folderCount(f.id)}
                   active={view.type === 'folder' && view.id === f.id}
