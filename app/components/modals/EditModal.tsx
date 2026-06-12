@@ -39,7 +39,7 @@ function IconPickField({ icon, onChange }: { icon?: string; onChange: (v: string
       <div className="icon-pick-row">
         <div className="icon-pick-preview">
           {icon
-            ? (icon.startsWith('fa-') || icon.startsWith('hero-'))
+            ? (icon.startsWith('fa-') || icon.startsWith('hero-') || icon.startsWith('drive-'))
               ? <IconRenderer icon={icon} style={{ width: 20, height: 20 }} />
               : <span style={{ fontSize: 20 }}>{icon}</span>
             : <span style={{ color: 'var(--text-4)', fontSize: 12 }}>None</span>

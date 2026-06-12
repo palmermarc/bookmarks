@@ -5,7 +5,7 @@ import IconRenderer from './IconRenderer'
 
 function ItemIcon({ icon, fallback }: { icon?: string; fallback: React.ReactNode }) {
   if (!icon) return <>{fallback}</>
-  if (icon.startsWith('fa-') || icon.startsWith('hero-'))
+  if (icon.startsWith('fa-') || icon.startsWith('hero-') || icon.startsWith('drive-'))
     return <IconRenderer icon={icon} style={{ width: 15, height: 15 }} />
   return <span style={{ fontSize: 15, lineHeight: 1 }}>{icon}</span>
 }
