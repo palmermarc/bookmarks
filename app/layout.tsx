@@ -33,7 +33,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${hanken.variable} ${jetbrains.variable} prank`}>
+      <body className={`${hanken.variable} ${jetbrains.variable}`}>
         <Providers>
           {children}
         </Providers>
