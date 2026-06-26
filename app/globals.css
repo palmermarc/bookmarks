@@ -134,6 +134,11 @@ a { color: inherit; text-decoration: none; }
   scrollbar-color: var(--accent) transparent;
 }
 
+body.prank {
+  --font-sans: "Comic Sans MS", "Comic Sans", cursive;
+  --font-mono: "Comic Sans MS", "Comic Sans", cursive;
+}
+
 body.prank, body.prank * {
   font-family: "Comic Sans MS", "Comic Sans", cursive !important;
 }
