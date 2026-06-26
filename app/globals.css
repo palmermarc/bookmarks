@@ -133,3 +133,7 @@ a { color: inherit; text-decoration: none; }
   scrollbar-width: thin;
   scrollbar-color: var(--accent) transparent;
 }
+
+body.prank, body.prank * {
+  font-family: "Comic Sans MS", "Comic Sans", cursive !important;
+}
