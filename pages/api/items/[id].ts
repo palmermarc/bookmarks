@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { sql } from '@vercel/postgres';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { setFav, createItemsTable } from '@/lib/db';
+import { setFav, setLastVisited, archiveItem, restoreItem, createItemsTable } from '@/lib/db';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions);
@@ -16,8 +16,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PATCH') {
     try {
-      const { fav } = req.body;
-      await setFav(Number(id), Boolean(fav), session.user.email);
+      const { fav, last_visited, archive, restore } = req.body;
+      if (fav !== undefined) await setFav(Number(id), Boolean(fav), session.user.email);
+      if (last_visited) await setLastVisited(Number(id), session.user.email);
+      if (archive) await archiveItem(Number(id), session.user.email);
+      if (restore) await restoreItem(Number(id), session.user.email);
       return res.status(200).json({ message: 'Updated' });
     } catch (error) {
       console.error(error);

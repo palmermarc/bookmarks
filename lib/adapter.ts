@@ -28,6 +28,7 @@ export interface AppBookmark {
   tags: string[]
   fav: boolean
   addedDaysAgo: number
+  lastVisitedDaysAgo?: number
   icon?: string
 }
 
@@ -48,11 +49,12 @@ export type ViewState =
   | { type: 'all' }
   | { type: 'fav' }
   | { type: 'recent' }
+  | { type: 'archive' }
   | { type: 'category'; id: string }
   | { type: 'folder'; id: string }
   | { type: 'tag'; id: string }
 
-export type SortOption = 'manual' | 'recent' | 'az' | 'za' | 'domain' | 'fav'
+export type SortOption = 'manual' | 'recent' | 'az' | 'za' | 'domain' | 'fav' | 'visited'
 export type ItemKind = 'bookmark' | 'folder' | 'category'
 
 export interface EditDraft {
@@ -112,6 +114,9 @@ export function adaptItems(items: Item[]): AppData {
     const addedDaysAgo = b.created_at
       ? Math.floor((now - new Date(b.created_at).getTime()) / 86_400_000)
       : 0
+    const lastVisitedDaysAgo = b.last_visited_at
+      ? Math.floor((now - new Date(b.last_visited_at).getTime()) / 86_400_000)
+      : undefined
     return {
       id: `b_${b.id}`,
       dbId: b.id,
@@ -123,6 +128,7 @@ export function adaptItems(items: Item[]): AppData {
       tags: [],
       fav: b.fav ?? false,
       addedDaysAgo,
+      lastVisitedDaysAgo,
       icon: b.icon ?? undefined,
     }
   })

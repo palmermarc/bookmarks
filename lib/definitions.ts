@@ -10,4 +10,6 @@ export interface Item {
   url?: string;
   order: number;
   fav?: boolean;
+  last_visited_at?: string;
+  archived_at?: string;
 }

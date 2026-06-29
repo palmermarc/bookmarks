@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef } from 'react'
 import { AppBookmark } from '@/lib/adapter'
-import { IconEdit, IconTrash, IconStar, IconPhoto } from './icons'
+import { IconEdit, IconStar, IconPhoto, IconArchive } from './icons'
 
 interface ContextMenuProps {
   x: number
@@ -10,11 +10,11 @@ interface ContextMenuProps {
   onClose: () => void
   onEdit: () => void
   onChangeIcon: () => void
-  onDelete: () => void
+  onArchive: () => void
   onFav: () => void
 }
 
-export default function ContextMenu({ x, y, bm, onClose, onEdit, onChangeIcon, onDelete, onFav }: ContextMenuProps) {
+export default function ContextMenu({ x, y, bm, onClose, onEdit, onChangeIcon, onArchive, onFav }: ContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -41,8 +41,8 @@ export default function ContextMenu({ x, y, bm, onClose, onEdit, onChangeIcon, o
         <IconStar size={14} filled={bm.fav} /> {bm.fav ? 'Remove Favorite' : 'Mark as Favorite'}
       </button>
       <div className="ctx-sep" />
-      <button className="ctx-item danger" onClick={() => act(onDelete)}>
-        <IconTrash size={14} /> Delete
+      <button className="ctx-item" onClick={() => act(onArchive)}>
+        <IconArchive size={14} /> Archive
       </button>
     </div>
   )

@@ -25,6 +25,12 @@ export async function createItemsTable() {
   await sql`
     ALTER TABLE items ADD COLUMN IF NOT EXISTS fav BOOLEAN NOT NULL DEFAULT FALSE;
   `;
+  await sql`
+    ALTER TABLE items ADD COLUMN IF NOT EXISTS last_visited_at TIMESTAMP WITH TIME ZONE;
+  `;
+  await sql`
+    ALTER TABLE items ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP WITH TIME ZONE;
+  `;
 }
 
 export async function setFav(itemId: number, fav: boolean, userId: string) {
@@ -43,9 +49,28 @@ export async function createItem(item: Omit<Item, 'id' | 'created_at'>) {
 
 export async function getItems(userId: string): Promise<Item[]> {
   const { rows } = await sql<Item>`
-    SELECT * FROM items WHERE user_id = ${userId} ORDER BY "order"
+    SELECT * FROM items WHERE user_id = ${userId} AND archived_at IS NULL ORDER BY "order"
   `;
   return rows;
+}
+
+export async function getArchivedItems(userId: string): Promise<Item[]> {
+  const { rows } = await sql<Item>`
+    SELECT * FROM items WHERE user_id = ${userId} AND archived_at IS NOT NULL AND type = 'bookmark' ORDER BY archived_at DESC
+  `;
+  return rows;
+}
+
+export async function setLastVisited(itemId: number, userId: string) {
+  await sql`UPDATE items SET last_visited_at = NOW() WHERE id = ${itemId} AND user_id = ${userId}`;
+}
+
+export async function archiveItem(itemId: number, userId: string) {
+  await sql`UPDATE items SET archived_at = NOW() WHERE id = ${itemId} AND user_id = ${userId}`;
+}
+
+export async function restoreItem(itemId: number, userId: string) {
+  await sql`UPDATE items SET archived_at = NULL WHERE id = ${itemId} AND user_id = ${userId}`;
 }
 
 export async function updateCategory(categoryId: number, name: string, icon: string, userId: string) {

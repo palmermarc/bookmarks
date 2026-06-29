@@ -1,7 +1,7 @@
 'use client'
 import React, { useState } from 'react'
 import { AppCategory, AppData, AppFolder, ViewState } from '@/lib/adapter'
-import { IconSearch, IconX, IconLayers, IconStar, IconClock, IconFolder, IconChevronDown } from './icons'
+import { IconSearch, IconX, IconLayers, IconStar, IconClock, IconFolder, IconChevronDown, IconArchive } from './icons'
 import { NavItem, CategoryGroup } from './NavItem'
 import { ItemIcon } from './IconRenderer'
 
@@ -105,6 +105,8 @@ export default function Sidebar({ data, view, onSelect, query, setQuery, header,
             active={view.type === 'fav'} onClick={() => onSelect({ type: 'fav' })} />
           <NavItem icon={<IconClock size={16} />} label="Recently Added" count={recentCount}
             active={view.type === 'recent'} onClick={() => onSelect({ type: 'recent' })} />
+          <NavItem icon={<IconArchive size={16} />} label="Archive"
+            active={view.type === 'archive'} onClick={() => onSelect({ type: 'archive' })} />
         </div>
 
         <div className="nav-heading">Categories</div>

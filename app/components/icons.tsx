@@ -49,6 +49,7 @@ export const IconGrip = Ic(<><circle cx="9" cy="6" r="1.3" fill="currentColor" s
 export const IconSort = Ic(<><path d="M7 4v16m0 0 3-3M7 20l-3-3"/><path d="M14 8h6M14 12h4M14 16h2"/></>)
 export const IconCheck = Ic(<><path d="m5 12.5 4.5 4.5L19 7"/></>)
 export const IconCopy = Ic(<><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15H4a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 4 3h9A1.5 1.5 0 0 1 14.5 4.5V6"/></>)
+export const IconArchive = Ic(<><rect x="3" y="10" width="18" height="9" rx="1.5"/><path d="M3 10V7.5A1.5 1.5 0 0 1 4.5 6h15A1.5 1.5 0 0 1 21 7.5V10"/><path d="M9.5 14.5h5"/></>)
 export const IconX = Ic(<><path d="M6 6l12 12M18 6 6 18"/></>)
 export const IconGoogle = ({ size = 18 }: IconProps) => (
   <svg viewBox="0 0 24 24" width={size} height={size}>

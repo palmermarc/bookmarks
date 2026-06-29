@@ -21,7 +21,7 @@ import ConfirmModal from '@/app/components/modals/ConfirmModal'
 import ImportModal from '@/app/components/modals/ImportModal'
 import {
   IconBookmark, IconSearch, IconStar, IconClock, IconFolder, IconLayers,
-  IconTag, IconGrip, IconPlus, IconImport, IconDownload, IconEdit,
+  IconTag, IconGrip, IconPlus, IconImport, IconDownload, IconEdit, IconArchive,
 } from '@/app/components/icons'
 import ContextMenu from '@/app/components/ContextMenu'
 import IconSelectorModal from '@/app/components/IconSelectorModal'
@@ -31,6 +31,7 @@ export default function Dashboard() {
   const router = useRouter()
 
   const [data, setData] = useState<AppData>({ categories: [], folders: [], bookmarks: [], tags: [] })
+  const [archivedBookmarks, setArchivedBookmarks] = useState<AppBookmark[]>([])
   const [view, setView] = useState<ViewState>({ type: 'all' })
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortOption>(() => {
@@ -84,7 +85,16 @@ export default function Dashboard() {
     }
   }, [])
 
+  const fetchArchivedItems = useCallback(async () => {
+    const res = await fetch('/api/items/archived')
+    if (res.ok) {
+      const items: Item[] = await res.json()
+      setArchivedBookmarks(adaptItems(items).bookmarks)
+    }
+  }, [])
+
   useEffect(() => { if (status === 'authenticated') fetchItems() }, [status, fetchItems])
+  useEffect(() => { if (view.type === 'archive') fetchArchivedItems() }, [view, fetchArchivedItems])
 
   // ── Toast ────────────────────────────────────────────────────
   const flash = useCallback((msg: string) => {
@@ -97,8 +107,9 @@ export default function Dashboard() {
     const { categories, folders, tags } = data
     if (query.trim()) return { title: `Results for "${query}"`, icon: <IconSearch size={18} /> }
     switch (view.type) {
-      case 'fav':    return { title: 'Favorites',      icon: <IconStar size={18} filled /> }
-      case 'recent': return { title: 'Recently Added', icon: <IconClock size={18} /> }
+      case 'fav':     return { title: 'Favorites',      icon: <IconStar size={18} filled /> }
+      case 'recent':  return { title: 'Recently Added', icon: <IconClock size={18} /> }
+      case 'archive': return { title: 'Archive',        icon: <IconArchive size={18} /> }
       case 'tag': {
         const tg = tags.find(x => x.id === view.id)
         return { title: tg ? '#' + tg.label : 'Tag', icon: <IconTag size={18} />, dot: tg?.hue }
@@ -144,6 +155,12 @@ export default function Dashboard() {
         case 'domain': arr.sort((a, b) => domainOf(a.url).localeCompare(domainOf(b.url))); break
         case 'fav':    arr.sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0) || a.addedDaysAgo - b.addedDaysAgo); break
         case 'recent': arr.sort((a, b) => a.addedDaysAgo - b.addedDaysAgo); break
+        case 'visited': arr.sort((a, b) => {
+          if (a.lastVisitedDaysAgo === undefined && b.lastVisitedDaysAgo === undefined) return 0
+          if (a.lastVisitedDaysAgo === undefined) return 1
+          if (b.lastVisitedDaysAgo === undefined) return -1
+          return a.lastVisitedDaysAgo - b.lastVisitedDaysAgo
+        }); break
         case 'manual': break
         default:       arr.sort((a, b) => a.addedDaysAgo - b.addedDaysAgo); break
       }
@@ -252,6 +269,48 @@ export default function Dashboard() {
       console.error('doDelete error', err)
     }
   }, [flash, fetchItems, view])
+
+  const doArchive = useCallback(async (target: DeleteTarget) => {
+    try {
+      await fetch(`/api/items/${target.dbId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archive: true }),
+      })
+      setModal(null)
+      flash('Archived')
+      fetchItems()
+    } catch (err) {
+      console.error('doArchive error', err)
+    }
+  }, [flash, fetchItems])
+
+  const onVisit = useCallback((bm: AppBookmark) => {
+    setData(prev => ({
+      ...prev,
+      bookmarks: prev.bookmarks.map(b => b.id === bm.id ? { ...b, lastVisitedDaysAgo: 0 } : b),
+    }))
+    fetch(`/api/items/${bm.dbId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ last_visited: true }),
+    }).catch(() => {})
+  }, [])
+
+  const onRestore = useCallback(async (bm: AppBookmark) => {
+    try {
+      await fetch(`/api/items/${bm.dbId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restore: true }),
+      })
+      flash('Restored')
+      fetchArchivedItems()
+      fetchItems()
+    } catch (err) {
+      console.error('onRestore error', err)
+    }
+  }, [flash, fetchArchivedItems, fetchItems])
 
   // ── Drag reorder ─────────────────────────────────────────────
   const onDrop = useCallback(async (targetId: string) => {
@@ -493,7 +552,41 @@ export default function Dashboard() {
         </header>
 
         <div className="content">
-          {childFolders.length > 0 && (
+          {view.type === 'archive' && (
+            archivedBookmarks.length > 0 ? (
+              <section>
+                <div className="bm-list">
+                  {archivedBookmarks.map((b) => (
+                    <BookmarkRow
+                      key={b.id}
+                      bm={b}
+                      tags={data.tags}
+                      dragMode={false}
+                      moveMode={false}
+                      archiveMode
+                      dragging={false}
+                      dragOver={false}
+                      onFav={onFav}
+                      onVisit={onVisit}
+                      onEdit={() => {}}
+                      onDelete={(bm) => setModal({ kind: 'confirm', target: { kind: 'bookmark', id: bm.id, dbId: bm.dbId, name: bm.title } })}
+                      onRestore={onRestore}
+                      onDragStart={() => {}}
+                      onDragOver={() => {}}
+                      onDrop={() => {}}
+                      onDragEnd={() => {}}
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : (
+              <div className="empty fade-in">
+                <div className="empty-ic"><IconArchive size={26} /></div>
+                <div className="empty-title">Archive is empty</div>
+              </div>
+            )
+          )}
+          {view.type !== 'archive' && childFolders.length > 0 && (
             <section className="folder-section">
               <div className="section-label">Folders</div>
               <div className="folder-grid">
@@ -517,7 +610,7 @@ export default function Dashboard() {
             </section>
           )}
 
-          {visible.length > 0 ? (
+          {view.type !== 'archive' && visible.length > 0 ? (
             <section>
               {childFolders.length > 0 && <div className="section-label">Bookmarks</div>}
               <div className="bm-list">
@@ -531,6 +624,7 @@ export default function Dashboard() {
                     dragging={dragId === b.id}
                     dragOver={overId === b.id}
                     onFav={onFav}
+                    onVisit={onVisit}
                     onMoveDragStart={setMovingId}
                     onEdit={(bm) => setModal({
                       kind: 'edit',
@@ -561,7 +655,7 @@ export default function Dashboard() {
                 ))}
               </div>
             </section>
-          ) : childFolders.length === 0 && (
+          ) : view.type !== 'archive' && childFolders.length === 0 && (
             <div className="empty fade-in">
               <div className="empty-ic"><IconBookmark size={26} /></div>
               <div className="empty-title">{emptyMsg}</div>
@@ -595,14 +689,15 @@ export default function Dashboard() {
       )}
       {modal?.kind === 'confirm' && (
         <ConfirmModal
-          title={`Delete ${modal.target.kind}?`}
+          title={modal.target.kind === 'bookmark' ? 'Archive or delete?' : `Delete ${modal.target.kind}?`}
           message={
             modal.target.kind === 'bookmark'
-              ? `"${modal.target.name}" will be removed.`
+              ? `Archive "${modal.target.name}" to recover it later, or delete it forever.`
               : `"${modal.target.name}" will be deleted. Items inside become loose (not deleted).`
           }
           onClose={() => setModal(null)}
           onConfirm={() => doDelete(modal.target)}
+          onArchive={modal.target.kind === 'bookmark' ? () => doArchive(modal.target) : undefined}
         />
       )}
 
@@ -614,7 +709,7 @@ export default function Dashboard() {
           onClose={() => setCtxMenu(null)}
           onEdit={() => setModal({ kind: 'edit', draft: bmToDraft(ctxMenu.bm) })}
           onChangeIcon={() => setIconPickBm(ctxMenu.bm)}
-          onDelete={() => setModal({ kind: 'confirm', target: { kind: 'bookmark', id: ctxMenu.bm.id, dbId: ctxMenu.bm.dbId, name: ctxMenu.bm.title } })}
+          onArchive={() => doArchive({ kind: 'bookmark', id: ctxMenu.bm.id, dbId: ctxMenu.bm.dbId, name: ctxMenu.bm.title })}
           onFav={() => onFav(ctxMenu.bm.id)}
         />
       )}
