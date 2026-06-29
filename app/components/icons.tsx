@@ -43,6 +43,7 @@ export const IconDots = Ic(<><circle cx="5" cy="12" r="1.4" fill="currentColor" 
 export const IconEdit = Ic(<><path d="M4 20h4l10-10a2 2 0 0 0-3-3L5 17z"/><path d="m13.5 6.5 3 3"/></>)
 export const IconTrash = Ic(<><path d="M5 7h14M9.5 7V5.5A1.5 1.5 0 0 1 11 4h2a1.5 1.5 0 0 1 1.5 1.5V7m1 0-.6 11a1.5 1.5 0 0 1-1.5 1.4H9.6A1.5 1.5 0 0 1 8.1 18L7.5 7"/></>)
 export const IconImport = Ic(<><path d="M12 3.5v10m0 0 3.5-3.5M12 13.5 8.5 10"/><path d="M5 15.5v2A1.5 1.5 0 0 0 6.5 19h11a1.5 1.5 0 0 0 1.5-1.5v-2"/></>)
+export const IconDownload = Ic(<><path d="M12 4v10"/><path d="m8.5 10.5 3.5 3.5 3.5-3.5"/><path d="M5 16v1.5A1.5 1.5 0 0 0 6.5 19h11a1.5 1.5 0 0 0 1.5-1.5V16"/></>)
 export const IconExternal = Ic(<><path d="M14 5h5v5"/><path d="M19 5l-8 8"/><path d="M18 13.5v4A1.5 1.5 0 0 1 16.5 19h-9A1.5 1.5 0 0 1 6 17.5v-9A1.5 1.5 0 0 1 7.5 7h4"/></>)
 export const IconGrip = Ic(<><circle cx="9" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.3" fill="currentColor" stroke="none"/></>)
 export const IconSort = Ic(<><path d="M7 4v16m0 0 3-3M7 20l-3-3"/><path d="M14 8h6M14 12h4M14 16h2"/></>)

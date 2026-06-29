@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { AppData, EditDraft, ItemKind } from '@/lib/adapter'
 import {
   IconBookmark, IconFolder, IconLayers, IconX, IconStar, IconChevronDown,
@@ -63,11 +63,48 @@ export default function EditModal({ data, draft, onClose, onSave }: EditModalPro
   const isEdit = !!draft.id
   const [kind, setKind] = useState<ItemKind>(draft.kind)
   const [form, setForm] = useState<EditDraft>(draft)
+  const [fetchingTitle, setFetchingTitle] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 60) }, [])
 
   const upd = (k: keyof EditDraft, v: unknown) => setForm((f) => ({ ...f, [k]: v }))
+
+  // Auto-fetch page title when URL is entered and title is empty
+  useEffect(() => {
+    if (kind !== 'bookmark' || isEdit) return
+    const url = form.url?.trim()
+    if (!url || !url.includes('.')) return
+    if (form.title) return
+
+    const fullUrl = url.startsWith('http') ? url : `https://${url}`
+    const timer = setTimeout(async () => {
+      setFetchingTitle(true)
+      try {
+        const res = await fetch(`/api/page-title?url=${encodeURIComponent(fullUrl)}`)
+        if (res.ok) {
+          const { title } = await res.json()
+          if (title) upd('title', title)
+        }
+      } finally {
+        setFetchingTitle(false)
+      }
+    }, 700)
+    return () => clearTimeout(timer)
+  }, [form.url, kind, isEdit]) // form.title intentionally omitted to avoid re-fetch loop
+
+  // Duplicate URL detection
+  const dupBookmark = useMemo(() => {
+    if (kind !== 'bookmark' || isEdit || !form.url?.trim()) return null
+    const normalize = (u: string) => {
+      try {
+        const full = u.startsWith('http') ? u : `https://${u}`
+        return new URL(full).href.toLowerCase().replace(/\/$/, '')
+      } catch { return u.toLowerCase().replace(/\/$/, '') }
+    }
+    const target = normalize(form.url)
+    return data.bookmarks.find(b => normalize(b.url) === target) ?? null
+  }, [kind, isEdit, form.url, data.bookmarks])
 
   const toggleTag = (tid: string) =>
     upd('tags', form.tags?.includes(tid)
@@ -114,7 +151,12 @@ export default function EditModal({ data, draft, onClose, onSave }: EditModalPro
                 onKeyDown={(e) => { if (e.key === 'Enter' && form.title) submit() }}
               />
             </Field>
-            <Field label="Title">
+            {dupBookmark && (
+              <div className="field-warn">
+                Already saved: <a href={dupBookmark.url} target="_blank" rel="noopener noreferrer">{dupBookmark.title}</a>
+              </div>
+            )}
+            <Field label={fetchingTitle ? 'Title — fetching…' : 'Title'}>
               <input
                 className="inp"
                 value={form.title ?? ''}

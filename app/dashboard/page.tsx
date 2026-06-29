@@ -21,7 +21,7 @@ import ConfirmModal from '@/app/components/modals/ConfirmModal'
 import ImportModal from '@/app/components/modals/ImportModal'
 import {
   IconBookmark, IconSearch, IconStar, IconClock, IconFolder, IconLayers,
-  IconTag, IconGrip, IconPlus, IconImport, IconEdit,
+  IconTag, IconGrip, IconPlus, IconImport, IconDownload, IconEdit,
 } from '@/app/components/icons'
 import ContextMenu from '@/app/components/ContextMenu'
 import IconSelectorModal from '@/app/components/IconSelectorModal'
@@ -33,7 +33,15 @@ export default function Dashboard() {
   const [data, setData] = useState<AppData>({ categories: [], folders: [], bookmarks: [], tags: [] })
   const [view, setView] = useState<ViewState>({ type: 'all' })
   const [query, setQuery] = useState('')
-  const [sort, setSort] = useState<SortOption>('recent')
+  const [sort, setSort] = useState<SortOption>(() => {
+    try { return (localStorage.getItem('bm:sort') as SortOption) || 'recent' }
+    catch { return 'recent' }
+  })
+
+  const updateSort = useCallback((s: SortOption) => {
+    setSort(s)
+    try { localStorage.setItem('bm:sort', s) } catch {}
+  }, [])
   const [dragMode, setDragMode] = useState(false)
   const [moveMode, setMoveMode] = useState(false)
   const [movingId, setMovingId] = useState<string | null>(null)
@@ -257,7 +265,7 @@ export default function Dashboard() {
     const [moved] = arr.splice(from, 1)
     arr.splice(to, 0, moved)
     setData(d => ({ ...d, bookmarks: arr }))
-    setSort('manual')
+    updateSort('manual')
     setDragId(null); setOverId(null)
     try {
       await fetch('/api/items/reorder', {
@@ -449,7 +457,7 @@ export default function Dashboard() {
             })()}
           </div>
           <div className="topbar-right">
-            <SortMenu sort={sort} setSort={setSort} />
+            <SortMenu sort={sort} setSort={updateSort} />
             <button
               className={'btn btn-ghost' + (dragMode ? ' on-toggle' : '')}
               onClick={() => { setDragMode(m => !m); setMoveMode(false); setMovingId(null) }}
@@ -466,6 +474,9 @@ export default function Dashboard() {
             <button className="btn" onClick={() => setModal({ kind: 'import' })}>
               <IconImport size={15} /> Import
             </button>
+            <a className="btn" href="/api/export">
+              <IconDownload size={15} /> Export
+            </a>
             <button
               className="btn btn-accent"
               onClick={() => setModal({ kind: 'edit', draft: newDraft('bookmark') })}
