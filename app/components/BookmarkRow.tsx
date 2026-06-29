@@ -1,10 +1,11 @@
 'use client'
+import { useState } from 'react'
 import { AppBookmark, AppTag } from '@/lib/adapter'
 import { domainOf, relativeDay } from '@/lib/utils'
-import { IconGrip, IconExternal, IconEdit, IconTrash, IconStar } from './icons'
+import { IconGrip, IconExternal, IconEdit, IconTrash, IconStar, IconCopy, IconCheck } from './icons'
 import Favicon from './Favicon'
 import TagChips from './TagChips'
-import IconRenderer from './IconRenderer'
+import { ItemIcon } from './IconRenderer'
 
 interface BookmarkRowProps {
   bm: AppBookmark
@@ -30,6 +31,14 @@ export default function BookmarkRow({
   onDragStart, onDragOver, onDrop, onDragEnd,
   onMoveDragStart, onContextMenu,
 }: BookmarkRowProps) {
+  const [copied, setCopied] = useState(false)
+
+  function copyUrl() {
+    navigator.clipboard.writeText(bm.url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
   return (
     <div
       className={'bm-row' + (dragging ? ' is-dragging' : '') + (dragOver ? ' is-dragover' : '')}
@@ -42,9 +51,7 @@ export default function BookmarkRow({
     >
       {(dragMode || moveMode) && <span className="row-grip"><IconGrip size={16} /></span>}
       {bm.icon
-        ? (bm.icon.startsWith('fa-') || bm.icon.startsWith('hero-') || bm.icon.startsWith('drive-'))
-          ? <span className="bm-favicon"><IconRenderer icon={bm.icon} style={{ width: 16, height: 16 }} /></span>
-          : <span className="bm-favicon" style={{ fontSize: 16, lineHeight: 1 }}>{bm.icon}</span>
+        ? <span className="bm-favicon"><ItemIcon icon={bm.icon} size={26} fallback={null} /></span>
         : <Favicon url={bm.url} />
       }
       <a className="bm-main" href={bm.url} target="_blank" rel="noopener noreferrer" title={bm.url}>
@@ -64,6 +71,9 @@ export default function BookmarkRow({
         <a className="icon-btn" title="Open" href={bm.url} target="_blank" rel="noopener noreferrer">
           <IconExternal size={15} />
         </a>
+        <button className="icon-btn" title="Copy URL" onClick={copyUrl}>
+          {copied ? <IconCheck size={15} /> : <IconCopy size={15} />}
+        </button>
         <button className="icon-btn" title="Edit" onClick={() => onEdit(bm)}>
           <IconEdit size={15} />
         </button>
