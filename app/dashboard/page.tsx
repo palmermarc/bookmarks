@@ -338,7 +338,7 @@ export default function Dashboard() {
       console.error('reorder error', err)
       fetchItems()
     }
-  }, [dragId, data.bookmarks, fetchItems])
+  }, [dragId, data.bookmarks, fetchItems, updateSort])
 
   // ── Favorite toggle ──────────────────────────────────────────
   const onFav = useCallback(async (id: string) => {
@@ -577,6 +577,7 @@ export default function Dashboard() {
             <button className="btn" onClick={() => setModal({ kind: 'import' })}>
               <IconImport size={15} /> Import
             </button>
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a className="btn" href="/api/export">
               <IconDownload size={15} /> Export
             </a>
@@ -673,7 +674,7 @@ export default function Dashboard() {
                     selected={selectedIds.has(b.id)}
                     onToggleSelect={(id) => setSelectedIds(prev => {
                       const next = new Set(prev)
-                      next.has(id) ? next.delete(id) : next.add(id)
+                      if (next.has(id)) { next.delete(id) } else { next.add(id) }
                       return next
                     })}
                     onMoveDragStart={setMovingId}

@@ -1,0 +1,27 @@
+import type { MetadataRoute } from 'next'
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: 'Custom Bookmarks',
+    short_name: 'Bookmarks',
+    description: 'Your personal bookmark manager',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#0f0f11',
+    theme_color: '#0f0f11',
+    icons: [
+      {
+        src: '/redfyrn.png',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'maskable',
+      },
+      {
+        src: '/icon-512.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'maskable',
+      },
+    ],
+  }
+}

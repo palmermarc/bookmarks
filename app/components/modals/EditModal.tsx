@@ -91,6 +91,7 @@ export default function EditModal({ data, draft, onClose, onSave }: EditModalPro
       }
     }, 700)
     return () => clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.url, kind, isEdit]) // form.title intentionally omitted to avoid re-fetch loop
 
   // Duplicate URL detection
