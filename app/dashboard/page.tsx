@@ -21,7 +21,7 @@ import ConfirmModal from '@/app/components/modals/ConfirmModal'
 import ImportModal from '@/app/components/modals/ImportModal'
 import {
   IconBookmark, IconSearch, IconStar, IconClock, IconFolder, IconLayers,
-  IconTag, IconGrip, IconPlus, IconImport, IconDownload, IconEdit, IconArchive,
+  IconTag, IconGrip, IconPlus, IconImport, IconDownload, IconEdit, IconArchive, IconCheck, IconChevronDown,
 } from '@/app/components/icons'
 import ContextMenu from '@/app/components/ContextMenu'
 import IconSelectorModal from '@/app/components/IconSelectorModal'
@@ -46,6 +46,8 @@ export default function Dashboard() {
   const [dragMode, setDragMode] = useState(false)
   const [moveMode, setMoveMode] = useState(false)
   const [movingId, setMovingId] = useState<string | null>(null)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [modal, setModal] = useState<ModalState>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
@@ -421,6 +423,42 @@ export default function Dashboard() {
     fetchItems()
   }, [data, fetchItems])
 
+  // ── Bulk actions ─────────────────────────────────────────────
+  const bulkMove = useCallback(async (parent: string) => {
+    const parentDbId = resolveParentId(parent, data)
+    const ids = Array.from(selectedIds)
+    await Promise.all(ids.map(id => {
+      const bm = data.bookmarks.find(b => b.id === id)
+      if (!bm) return Promise.resolve()
+      return fetch(`/api/items/${bm.dbId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: bm.title, url: bm.url, icon: bm.icon ?? '', parent_id: parentDbId }),
+      })
+    }))
+    setSelectedIds(new Set())
+    setSelectMode(false)
+    fetchItems()
+    flash(`Moved ${ids.length} bookmark${ids.length !== 1 ? 's' : ''}`)
+  }, [selectedIds, data, fetchItems, flash])
+
+  const bulkArchive = useCallback(async () => {
+    const ids = Array.from(selectedIds)
+    await Promise.all(ids.map(id => {
+      const bm = data.bookmarks.find(b => b.id === id)
+      if (!bm) return Promise.resolve()
+      return fetch(`/api/items/${bm.dbId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archive: true }),
+      })
+    }))
+    setSelectedIds(new Set())
+    setSelectMode(false)
+    fetchItems()
+    flash(`Archived ${ids.length} bookmark${ids.length !== 1 ? 's' : ''}`)
+  }, [selectedIds, data, fetchItems, flash])
+
   const bmToDraft = (bm: AppBookmark): EditDraft => ({
     kind: 'bookmark',
     id: bm.id,
@@ -461,7 +499,7 @@ export default function Dashboard() {
       <Sidebar
         data={data}
         view={view}
-        onSelect={(v) => { setView(v); setQuery('') }}
+        onSelect={(v) => { setView(v); setQuery(''); setSelectedIds(new Set()) }}
         query={query}
         setQuery={setQuery}
         header={
@@ -519,15 +557,21 @@ export default function Dashboard() {
             <SortMenu sort={sort} setSort={updateSort} />
             <button
               className={'btn btn-ghost' + (dragMode ? ' on-toggle' : '')}
-              onClick={() => { setDragMode(m => !m); setMoveMode(false); setMovingId(null) }}
+              onClick={() => { setDragMode(m => !m); setMoveMode(false); setMovingId(null); setSelectMode(false); setSelectedIds(new Set()) }}
             >
               <IconGrip size={15} /> {dragMode ? 'Done' : 'Reorder'}
             </button>
             <button
               className={'btn btn-ghost' + (moveMode ? ' on-toggle' : '')}
-              onClick={() => { setMoveMode(m => !m); setDragMode(false); setMovingId(null) }}
+              onClick={() => { setMoveMode(m => !m); setDragMode(false); setMovingId(null); setSelectMode(false); setSelectedIds(new Set()) }}
             >
               <IconFolder size={15} /> {moveMode ? 'Done' : 'Move'}
+            </button>
+            <button
+              className={'btn btn-ghost' + (selectMode ? ' on-toggle' : '')}
+              onClick={() => { setSelectMode(m => !m); setSelectedIds(new Set()); setDragMode(false); setMoveMode(false); setMovingId(null) }}
+            >
+              <IconCheck size={15} /> {selectMode ? 'Done' : 'Select'}
             </button>
             <div className="bar-sep" />
             <button className="btn" onClick={() => setModal({ kind: 'import' })}>
@@ -625,6 +669,13 @@ export default function Dashboard() {
                     dragOver={overId === b.id}
                     onFav={onFav}
                     onVisit={onVisit}
+                    selectMode={selectMode}
+                    selected={selectedIds.has(b.id)}
+                    onToggleSelect={(id) => setSelectedIds(prev => {
+                      const next = new Set(prev)
+                      next.has(id) ? next.delete(id) : next.add(id)
+                      return next
+                    })}
                     onMoveDragStart={setMovingId}
                     onEdit={(bm) => setModal({
                       kind: 'edit',
@@ -650,7 +701,7 @@ export default function Dashboard() {
                     onDragOver={(e) => { e.preventDefault(); setOverId(b.id) }}
                     onDrop={() => onDrop(b.id)}
                     onDragEnd={() => { setDragId(null); setOverId(null) }}
-                    onContextMenu={(e) => setCtxMenu({ x: e.clientX, y: e.clientY, bm: b })}
+                    onContextMenu={!selectMode ? (e) => setCtxMenu({ x: e.clientX, y: e.clientY, bm: b }) : undefined}
                   />
                 ))}
               </div>
@@ -722,6 +773,47 @@ export default function Dashboard() {
       )}
 
       {toast && <div className="toast fade-in">{toast}</div>}
+
+      {selectMode && selectedIds.size > 0 && (
+        <div className="bulk-bar fade-in">
+          <span className="bulk-count">{selectedIds.size} selected</span>
+          <button className="btn btn-ghost" onClick={() => setSelectedIds(new Set(visible.map(b => b.id)))}>
+            Select all
+          </button>
+          <div className="bulk-sep" />
+          <div className="bulk-move-wrap select-wrap">
+            <select
+              className="inp bulk-move-select"
+              value=""
+              onChange={(e) => { if (e.target.value) bulkMove(e.target.value) }}
+            >
+              <option value="">Move to…</option>
+              <optgroup label="Categories">
+                {data.categories.map(c => (
+                  <option key={c.id} value={`c:${c.id}`}>{c.name}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Folders">
+                {data.folders.map(f => {
+                  const cat = data.categories.find(x => x.id === f.categoryId)
+                  return (
+                    <option key={f.id} value={`f:${f.id}`}>
+                      {cat ? `${cat.name} / ` : ''}{f.name}
+                    </option>
+                  )
+                })}
+              </optgroup>
+            </select>
+            <IconChevronDown size={13} className="select-caret" />
+          </div>
+          <button className="btn" onClick={bulkArchive}>
+            <IconArchive size={14} /> Archive
+          </button>
+          <button className="btn btn-ghost" onClick={() => { setSelectMode(false); setSelectedIds(new Set()) }}>
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   )
 }

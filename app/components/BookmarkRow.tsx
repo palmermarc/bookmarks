@@ -15,6 +15,9 @@ interface BookmarkRowProps {
   dragOver: boolean
   moveMode?: boolean
   archiveMode?: boolean
+  selectMode?: boolean
+  selected?: boolean
+  onToggleSelect?: (id: string) => void
   onFav: (id: string) => void
   onEdit: (bm: AppBookmark) => void
   onDelete: (bm: AppBookmark) => void
@@ -29,7 +32,7 @@ interface BookmarkRowProps {
 }
 
 export default function BookmarkRow({
-  bm, tags, dragMode, dragging, dragOver, moveMode, archiveMode,
+  bm, tags, dragMode, dragging, dragOver, moveMode, archiveMode, selectMode, selected, onToggleSelect,
   onFav, onEdit, onDelete, onVisit, onRestore,
   onDragStart, onDragOver, onDrop, onDragEnd,
   onMoveDragStart, onContextMenu,
@@ -48,7 +51,12 @@ export default function BookmarkRow({
 
   return (
     <div
-      className={'bm-row' + (dragging ? ' is-dragging' : '') + (dragOver ? ' is-dragover' : '')}
+      className={
+        'bm-row' +
+        (dragging ? ' is-dragging' : '') +
+        (dragOver ? ' is-dragover' : '') +
+        (selected ? ' is-selected' : '')
+      }
       draggable={dragMode || moveMode}
       onDragStart={dragMode ? onDragStart : moveMode ? () => onMoveDragStart?.(bm.id) : undefined}
       onDragOver={dragMode ? onDragOver : undefined}
@@ -56,7 +64,12 @@ export default function BookmarkRow({
       onDragEnd={dragMode ? onDragEnd : undefined}
       onContextMenu={onContextMenu ? (e) => { e.preventDefault(); onContextMenu(e) } : undefined}
     >
-      {(dragMode || moveMode) && <span className="row-grip"><IconGrip size={16} /></span>}
+      {selectMode
+        ? <button className={'select-check' + (selected ? ' on' : '')} onClick={() => onToggleSelect?.(bm.id)}>
+            {selected && <IconCheck size={12} />}
+          </button>
+        : (dragMode || moveMode) && <span className="row-grip"><IconGrip size={16} /></span>
+      }
       {bm.icon
         ? <span className="bm-favicon"><ItemIcon icon={bm.icon} size={26} fallback={null} /></span>
         : <Favicon url={bm.url} />
@@ -70,7 +83,7 @@ export default function BookmarkRow({
       </a>
       <TagChips ids={bm.tags} tags={tags} />
       <span className="bm-time">{timeLabel}</span>
-      {!archiveMode && (
+      {!archiveMode && !selectMode && (
         <button
           className={'star-btn' + (bm.fav ? ' on' : '')}
           onClick={() => onFav(bm.id)}
@@ -79,33 +92,35 @@ export default function BookmarkRow({
           <IconStar size={16} filled={bm.fav} />
         </button>
       )}
-      <span className="row-actions">
-        <a className="icon-btn" title="Open" href={bm.url} target="_blank" rel="noopener noreferrer" onClick={() => onVisit?.(bm)}>
-          <IconExternal size={15} />
-        </a>
-        {archiveMode ? (
-          <>
-            <button className="icon-btn" title="Restore" onClick={() => onRestore?.(bm)}>
-              <IconImport size={15} />
-            </button>
-            <button className="icon-btn" title="Delete forever" onClick={() => onDelete(bm)}>
-              <IconTrash size={15} />
-            </button>
-          </>
-        ) : (
-          <>
-            <button className="icon-btn" title="Copy URL" onClick={copyUrl}>
-              {copied ? <IconCheck size={15} /> : <IconCopy size={15} />}
-            </button>
-            <button className="icon-btn" title="Edit" onClick={() => onEdit(bm)}>
-              <IconEdit size={15} />
-            </button>
-            <button className="icon-btn" title="Archive" onClick={() => onDelete(bm)}>
-              <IconArchive size={15} />
-            </button>
-          </>
-        )}
-      </span>
+      {!selectMode && (
+        <span className="row-actions">
+          <a className="icon-btn" title="Open" href={bm.url} target="_blank" rel="noopener noreferrer" onClick={() => onVisit?.(bm)}>
+            <IconExternal size={15} />
+          </a>
+          {archiveMode ? (
+            <>
+              <button className="icon-btn" title="Restore" onClick={() => onRestore?.(bm)}>
+                <IconImport size={15} />
+              </button>
+              <button className="icon-btn" title="Delete forever" onClick={() => onDelete(bm)}>
+                <IconTrash size={15} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="icon-btn" title="Copy URL" onClick={copyUrl}>
+                {copied ? <IconCheck size={15} /> : <IconCopy size={15} />}
+              </button>
+              <button className="icon-btn" title="Edit" onClick={() => onEdit(bm)}>
+                <IconEdit size={15} />
+              </button>
+              <button className="icon-btn" title="Archive" onClick={() => onDelete(bm)}>
+                <IconArchive size={15} />
+              </button>
+            </>
+          )}
+        </span>
+      )}
     </div>
   )
 }
