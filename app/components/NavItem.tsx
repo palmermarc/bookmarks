@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { AppCategory, AppFolder, ViewState } from '@/lib/adapter'
 import { IconFolder, IconChevron } from './icons'
 import { ItemIcon } from './IconRenderer'
@@ -58,10 +58,26 @@ interface CategoryGroupProps extends DragProps {
   folderCount: (fid: string) => number
   moveTarget?: boolean
   onMoveDrop?: (folderId: string | null, catId: string) => void
+  onReorderFolders?: (folders: AppFolder[]) => void
 }
 
-export function CategoryGroup({ cat, folders, bmCount, expanded, onToggle, view, onSelect, folderCount, dragging, dragOver, onDragStart, onDragOver, onDrop, onDragEnd, moveTarget, onMoveDrop }: CategoryGroupProps) {
+export function CategoryGroup({ cat, folders, bmCount, expanded, onToggle, view, onSelect, folderCount, dragging, dragOver, onDragStart, onDragOver, onDrop, onDragEnd, moveTarget, onMoveDrop, onReorderFolders }: CategoryGroupProps) {
   const isActive = view.type === 'category' && view.id === cat.id
+  const [folDragId, setFolDragId] = useState<string | null>(null)
+  const [folOverId, setFolOverId] = useState<string | null>(null)
+
+  const onFolDrop = (targetId: string) => {
+    if (!folDragId || folDragId === targetId) { setFolDragId(null); setFolOverId(null); return }
+    const arr = [...folders]
+    const from = arr.findIndex(f => f.id === folDragId)
+    const to   = arr.findIndex(f => f.id === targetId)
+    if (from < 0 || to < 0) { setFolDragId(null); setFolOverId(null); return }
+    const [moved] = arr.splice(from, 1)
+    arr.splice(to, 0, moved)
+    setFolDragId(null); setFolOverId(null)
+    onReorderFolders?.(arr)
+  }
+
   return (
     <div
       className={'cat-group' + (dragging ? ' is-dragging' : '') + (dragOver ? ' is-dragover' : '') + (moveTarget ? ' move-target' : '')}
@@ -99,6 +115,12 @@ export function CategoryGroup({ cat, folders, bmCount, expanded, onToggle, view,
               count={folderCount(f.id)}
               active={view.type === 'folder' && view.id === f.id}
               onClick={() => onSelect({ type: 'folder', id: f.id })}
+              dragging={folDragId === f.id}
+              dragOver={folOverId === f.id}
+              onDragStart={!moveTarget ? (e) => { setFolDragId(f.id); e.dataTransfer.effectAllowed = 'move' } : undefined}
+              onDragOver={!moveTarget ? (e) => { e.preventDefault(); setFolOverId(f.id) } : undefined}
+              onDrop={!moveTarget ? () => onFolDrop(f.id) : undefined}
+              onDragEnd={!moveTarget ? () => { setFolDragId(null); setFolOverId(null) } : undefined}
               moveTarget={moveTarget}
               onMoveDrop={() => onMoveDrop?.(f.id, cat.id)}
             />

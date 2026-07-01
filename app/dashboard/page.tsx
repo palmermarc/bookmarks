@@ -52,6 +52,8 @@ export default function Dashboard() {
   const [toast, setToast] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
+  const [folDragId, setFolDragId] = useState<string | null>(null)
+  const [folOverId, setFolOverId] = useState<string | null>(null)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; bm: AppBookmark } | null>(null)
   const [iconPickBm, setIconPickBm] = useState<AppBookmark | null>(null)
 
@@ -382,6 +384,21 @@ export default function Dashboard() {
     })
   }, [])
 
+  // ── Folder reorder (category view grid) ─────────────────────
+  const onFolDrop = useCallback(async (targetId: string) => {
+    if (!folDragId || folDragId === targetId) { setFolDragId(null); setFolOverId(null); return }
+    const arr = [...childFolders]
+    const from = arr.findIndex(f => f.id === folDragId)
+    const to   = arr.findIndex(f => f.id === targetId)
+    if (from < 0 || to < 0) { setFolDragId(null); setFolOverId(null); return }
+    const [moved] = arr.splice(from, 1)
+    arr.splice(to, 0, moved)
+    setFolDragId(null); setFolOverId(null)
+    const catId = view.type === 'category' ? view.id : null
+    const others = data.folders.filter(f => f.categoryId !== catId)
+    onReorderFolders([...others, ...arr])
+  }, [folDragId, childFolders, data.folders, view, onReorderFolders])
+
   // ── Move to folder ───────────────────────────────────────────
   const onMoveToFolder = useCallback(async (bookmarkId: string, targetFolderId: string | null, targetCatId: string | null) => {
     const bm = data.bookmarks.find(b => b.id === bookmarkId)
@@ -649,6 +666,12 @@ export default function Dashboard() {
                       kind: 'confirm',
                       target: { kind: 'folder', id: fo.id, dbId: fo.dbId, name: fo.name },
                     })}
+                    dragging={dragMode && folDragId === f.id}
+                    dragOver={dragMode && folOverId === f.id}
+                    onDragStart={dragMode ? (e) => { setFolDragId(f.id); e.dataTransfer.effectAllowed = 'move' } : undefined}
+                    onDragOver={dragMode ? (e) => { e.preventDefault(); setFolOverId(f.id) } : undefined}
+                    onDrop={dragMode ? () => onFolDrop(f.id) : undefined}
+                    onDragEnd={dragMode ? () => { setFolDragId(null); setFolOverId(null) } : undefined}
                   />
                 ))}
               </div>

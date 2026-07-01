@@ -1,3 +1,4 @@
+import React from 'react'
 import { AppFolder } from '@/lib/adapter'
 import { IconFolder, IconEdit, IconTrash, IconChevron } from './icons'
 import { ItemIcon } from './IconRenderer'
@@ -8,11 +9,25 @@ interface FolderRowProps {
   onOpen: (folder: AppFolder) => void
   onEdit: (folder: AppFolder) => void
   onDelete: (folder: AppFolder) => void
+  dragging?: boolean
+  dragOver?: boolean
+  onDragStart?: (e: React.DragEvent) => void
+  onDragOver?: (e: React.DragEvent) => void
+  onDrop?: () => void
+  onDragEnd?: () => void
 }
 
-export default function FolderRow({ folder, count, onOpen, onEdit, onDelete }: FolderRowProps) {
+export default function FolderRow({ folder, count, onOpen, onEdit, onDelete, dragging, dragOver, onDragStart, onDragOver, onDrop, onDragEnd }: FolderRowProps) {
   return (
-    <div className="folder-row" onClick={() => onOpen(folder)}>
+    <div
+      className={'folder-row' + (dragging ? ' is-dragging' : '') + (dragOver ? ' is-dragover' : '')}
+      draggable={!!(onDragStart)}
+      onClick={() => onOpen(folder)}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop ? () => onDrop() : undefined}
+      onDragEnd={onDragEnd}
+    >
       <div className="folder-row-top">
         <span className="folder-ic"><ItemIcon icon={folder.icon} size={32} fallback={<IconFolder size={17} />} /></span>
         <span className="folder-name">{folder.name}</span>

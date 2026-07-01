@@ -128,6 +128,10 @@ export default function Sidebar({ data, view, onSelect, query, setQuery, header,
               onDragOver={!moveMode ? (e) => { e.preventDefault(); setCatOverId(c.id) } : undefined}
               onDrop={!moveMode ? () => onCatDrop(c.id) : undefined}
               onDragEnd={!moveMode ? () => { setCatDragId(null); setCatOverId(null) } : undefined}
+              onReorderFolders={(reordered) => {
+                const others = folders.filter(f => f.categoryId !== c.id)
+                onReorderFolders?.([...others, ...reordered])
+              }}
               moveTarget={moveMode}
               onMoveDrop={(folderId, catId) => movingId && onMoveToFolder?.(movingId, folderId, catId)}
             />
